@@ -1,0 +1,94 @@
+# --- Python / Django ---
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.pyi
+*.sqlite3
+db.sqlite3
+*.log
+local_settings.py
+
+# Virtual Environment (assuming it's at the project root)
+/venv/
+# Add other common names if you use them:
+# /.venv/
+# /env/
+# /virtual/
+# /venv.bak/
+# /env.bak/
+
+# Django Media Files (User Uploads - usually not tracked)
+/backend/media/
+
+# Django Static Files (Collected for deployment - usually not tracked)
+# Adjust 'staticfiles' if your STATIC_ROOT is different
+/backend/staticfiles/
+
+# Environment variables
+# Ignore all .env files, but allow example files
+.env*
+!/.env.example
+!/.env.sample
+
+# --- Frontend ---
+# Add frontend build output or dependencies if you ever use tools
+# node_modules/
+# build/
+# dist/
+# .parcel-cache/
+
+# --- OS Specific ---
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+# Linux
+*~
+
+# --- IDE / Editor Specific ---
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+# PyCharm
+.idea/
+*.iml
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+# Atom
+.atom/
+# Eclipse
+.project
+.pydevproject
+.settings/
+# Netbeans
+nbproject/
+
+# --- Testing / Coverage ---
+*.cover
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+pytest_cache/
+.pytest_cache/
+nosetests.xml
+
+# --- Distribution / Packaging ---
+*.egg-info/
+.eggs/
+dist/
+build/
+*.tar.gz
+*.zip
+
