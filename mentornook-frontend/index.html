@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to MentorNook</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <header class="main-header logged-out">
+        <div class="container">
+            <a href="index.html" class="logo">
+                <img src="assets/images/logo.png" alt="MentorNook Logo">
+                <span>MentorNook</span>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="signup.html" class="btn btn-primary">Sign Up</a></li>
+                    <li><a href="login.html" class="btn btn-secondary">Login</a></li>
+                </ul>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>Connect, Learn, Grow with MentorNook</h1>
+                <p>Find the perfect mentor or mentee to achieve your goals.</p>
+                <a href="signup.html" class="btn btn-primary btn-large">Get Started</a>
+                <p class="login-prompt">Already have an account? <a href="login.html">Login here</a></p>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <h2>How MentorNook Helps You</h2>
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <!-- {/* Icon placeholder */} -->
+                        <div class="feature-icon" aria-hidden="true">🔍</div>
+                        <h3>Find Your Mentor</h3>
+                        <p>Browse profiles and connect with experienced professionals in your field.</p>
+                    </div>
+                    <div class="feature-item">
+                        <!-- {/* Icon placeholder */} -->
+                        <div class="feature-icon" aria-hidden="true">🤝</div>
+                        <h3>Become a Mentor</h3>
+                        <p>Share your knowledge and guide the next generation of talent.</p>
+                    </div>
+                    <div class="feature-item">
+                        <!-- {/* Icon placeholder */} -->
+                        <div class="feature-icon" aria-hidden="true">🌱</div>
+                        <h3>Grow Your Skills</h3>
+                        <p>Learn new skills and gain valuable insights through mentorship.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="main-footer">
+        <div class="container">
+            <p>&copy; <span id="current-year"></span> MentorNook. All rights reserved.</p>
+            <!-- {/* Optional links */} -->
+            </div>
+    </footer>
+
+    <script>document.getElementById('current-year').textContent = new Date().getFullYear();</script>
+    <script src="js/utils.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

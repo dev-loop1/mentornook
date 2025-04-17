@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Profile - MentorNook</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+     <header class="main-header logged-in">
+         <div class="container">
+             <a href="dashboard.html" class="logo">
+                <img src="assets/images/logo.png" alt="MentorNook Logo">
+                <span>MentorNook</span>
+            </a>
+            <nav>
+                 <ul>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="my_profile.html">My Profile</a></li>
+                    <li><a href="connections.html">Connections</a></li>
+                    <li><button id="logout-button" class="btn btn-secondary">Logout</button></li>
+                </ul>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+        </div>
+    </header>
+
+    <main class="profile-setup-page">
+        <div class="container">
+            <div class="profile-form-container">
+                <h2 id="profile-form-title">Setup Your Profile</h2>
+                <p>Complete your profile to start connecting!</p>
+                <form id="profile-form" novalidate>
+                    <div class="form-group profile-picture-group">
+                        <label>Profile Picture</label>
+                        <img id="profile-pic-preview" src="assets/images/profile_avatar_default.png" alt="Profile picture preview" width="100" height="100">
+                        <input type="file" id="profile-picture" name="profile_picture" accept="image/*">
+                        <label for="profile-picture" class="btn btn-secondary">Upload Image</label>
+                         <div class="error-message" id="profile-picture-error"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Your Role <span class="required">*</span></label>
+                        <div class="radio-group">
+                             <label><input type="radio" name="role" value="mentor" required> Mentor</label>
+                             <label><input type="radio" name="role" value="mentee" required> Mentee</label>
+                        </div>
+                        <div class="error-message" id="role-error"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profile-headline">Headline</label>
+                        <input type="text" id="profile-headline" name="headline" placeholder="e.g., Software Engineer at Google">
+                        <div class="error-message" id="headline-error"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profile-bio">Bio <span class="required">*</span></label>
+                        <textarea id="profile-bio" name="bio" rows="5" placeholder="Tell us about yourself, your experience, and what you're looking for..." required></textarea>
+                        <div class="error-message" id="bio-error"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profile-skills-input">Skills <span class="required">*</span></label>
+                        <div class="tag-input-container" id="profile-skills-container">
+                            <div class="tags-display-area" id="profile-skills-tags">
+                                </div>
+                            <input type="text" id="profile-skills-input" placeholder="Type a skill and press Enter or Comma..." autocomplete="off">
+                        </div>
+                        <input type="hidden" id="profile-skills" name="skills" required> <div class="error-message" id="skills-error"></div>
+                        <small class="form-text text-muted">Separate skills with commas or Enter.</small>
+                    </div>
+
+                     <div class="form-group">
+                        <label for="profile-interests-input">Areas of Interest <span class="required">*</span></label>
+                        <div class="tag-input-container" id="profile-interests-container">
+                             <div class="tags-display-area" id="profile-interests-tags">
+                                 </div>
+                             <input type="text" id="profile-interests-input" placeholder="Type an interest and press Enter or Comma..." autocomplete="off">
+                         </div>
+                        <input type="hidden" id="profile-interests" name="interests" required> <div class="error-message" id="interests-error"></div>
+                        <small class="form-text text-muted">Separate interests with commas or Enter.</small>
+                    </div>
+
+                     <div class="form-group">
+                        <label for="profile-location">Location (Optional)</label>
+                        <input type="text" id="profile-location" name="location" placeholder="e.g., San Francisco, CA">
+                    </div>
+                     <div class="form-group">
+                        <label for="profile-linkedin">LinkedIn URL (Optional)</label>
+                        <input type="url" id="profile-linkedin" name="linkedin_url" placeholder="https://linkedin.com/in/yourprofile">
+                    </div>
+                     <div class="form-group">
+                        <label for="profile-website">Website URL (Optional)</label>
+                        <input type="url" id="profile-website" name="website_url" placeholder="https://yourwebsite.com">
+                    </div>
+
+                     <div class="form-group form-error" id="profile-general-error">
+                        </div>
+
+                    <div class="form-actions">
+                         <button type="submit" class="btn btn-primary">Save Profile</button>
+                         </div>
+                </form>
+
+                 <div class="delete-profile-section">
+                    <button id="delete-profile-button" class="btn btn-danger">Delete Profile</button>
+                 </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="main-footer">
+        <div class="container">
+            <p>&copy; <span id="current-year"></span> MentorNook. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>document.getElementById('current-year').textContent = new Date().getFullYear();</script>
+    <script src="js/utils.js"></script>
+     <script src="js/auth.js"></script> <script src="js/profile.js"></script>
+    <script src="js/main.js"></script> </body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MentorNook</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <header class="main-header logged-in">
+        <div class="container">
+             <a href="dashboard.html" class="logo">
+                <img src="assets/images/logo.png" alt="MentorNook Logo">
+                <span>MentorNook</span>
+            </a>
+            <nav>
+                 <ul>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="my_profile.html">My Profile</a></li>
+                    <li><a href="connections.html">Connections</a></li>
+                    <li><button id="logout-button" class="btn btn-secondary">Logout</button></li>
+                </ul>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+        </div>
+    </header>
+
+    <main class="dashboard-page">
+        <div class="container dashboard-container">
+            <aside class="filters-sidebar">
+                <h2>Filter Users</h2>
+                <form id="filter-form">
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="filter-role" name="role">
+                            <option value="">Any</option>
+                            <option value="mentor">Mentor</option>
+                            <option value="mentee">Mentee</option>
+                        </select>
+                        <div class="form-group">
+                            <label for="filter-skills-input">Skills</label>
+                             <div class="tag-input-container" id="filter-skills-container">
+                                 <div class="tags-display-area" id="filter-skills-tags">
+                                     </div>
+                                 <input type="text" id="filter-skills-input" placeholder="Type skills..." autocomplete="off">
+                             </div>
+                            <input type="hidden" id="filter-skills" name="skills"> </div>
+    
+                         <div class="form-group">
+                            <label for="filter-interests-input">Interests</label>
+                             <div class="tag-input-container" id="filter-interests-container">
+                                 <div class="tags-display-area" id="filter-interests-tags">
+                                     </div>
+                                 <input type="text" id="filter-interests-input" placeholder="Type interests..." autocomplete="off">
+                             </div>
+                             <input type="hidden" id="filter-interests" name="interests"> </div>
+                    <button type="submit" class="btn btn-primary btn-block">Apply Filters</button>
+                </form>
+            </aside>
+
+            <section class="user-list-section">
+                <div class="search-bar-container">
+                    <form id="search-form" class="search-form" role="search">
+                         <label for="search-input" class="sr-only">Search Users</label> <input type="search" id="search-input" name="search" placeholder="Search by name or keyword in bio..." aria-label="Search users by name or keyword">
+                         <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                         </form>
+                </div>
+                <h2>Discover Mentors and Mentees</h2>
+                <div id="user-list-container" class="user-grid">
+                    <p id="loading-message">Loading users...</p>
+                    <p id="no-results-message" style="display: none;">No users found matching your criteria.</p>
+                </div>
+                <div id="pagination-controls" class="pagination">
+                    </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="main-footer">
+         <div class="container">
+            <p>&copy; <span id="current-year"></span> MentorNook. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>document.getElementById('current-year').textContent = new Date().getFullYear();</script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script> <script src="js/discovery.js"></script>
+    <script src="js/main.js"></script> </body>
+</html>

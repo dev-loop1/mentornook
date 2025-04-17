@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Connections - MentorNook</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+     <header class="main-header logged-in">
+         <div class="container">
+             <a href="dashboard.html" class="logo">
+                <img src="assets/images/logo.png" alt="MentorNook Logo">
+                <span>MentorNook</span>
+            </a>
+            <nav>
+                 <ul>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="my_profile.html">My Profile</a></li>
+                    <li><a href="connections.html" class="active">Connections</a></li>
+                    <li><button id="logout-button" class="btn btn-secondary">Logout</button></li>
+                </ul>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+        </div>
+    </header>
+
+    <main class="connections-page">
+        <div class="container">
+            <h1>Manage Your Connections</h1>
+
+            <section class="connections-section">
+                <h2>Incoming Requests</h2>
+                <div id="incoming-requests-list" class="connection-list">
+                    <p id="loading-incoming">Loading incoming requests...</p>
+                    <p id="no-incoming" style="display: none;">You have no pending incoming requests.</p>
+                    </div>
+            </section>
+
+            <section class="connections-section">
+                <h2>Outgoing Requests</h2>
+                 <div id="outgoing-requests-list" class="connection-list">
+                     <p id="loading-outgoing">Loading outgoing requests...</p>
+                    <p id="no-outgoing" style="display: none;">You have no pending outgoing requests.</p>
+                    </div>
+            </section>
+
+             <section class="connections-section">
+                <h2>Current Connections</h2>
+                 <div id="current-connections-list" class="connection-list">
+                     <p id="loading-current">Loading current connections...</p>
+                    <p id="no-current" style="display: none;">You have no active connections yet.</p>
+                     </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="main-footer">
+        <div class="container">
+            <p>&copy; <span id="current-year"></span> MentorNook. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>document.getElementById('current-year').textContent = new Date().getFullYear();</script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script> <script src="js/connections.js"></script> <script src="js/main.js"></script> </body>
+</html>
