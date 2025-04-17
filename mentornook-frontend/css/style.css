@@ -129,7 +129,7 @@ ul {
 .btn-primary {
     color: #fff;
     background-color: var(--primary-color);
-    border-color: var(--primary-color);
+    border-color: #fff;
 }
 
 .btn-primary:hover {
