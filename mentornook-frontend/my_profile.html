@@ -1,83 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Profile - MentorNook</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/responsive.css">
-</head>
-<body>
-     <header class="main-header logged-in">
-         <div class="container">
-             <a href="dashboard.html" class="logo">
-                <img src="assets/images/logo.png" alt="MentorNook Logo">
-                <span>MentorNook</span>
-            </a>
-            <nav>
-                 <ul>
-                    <li><a href="dashboard.html">Dashboard</a></li>
-                    <li><a href="my_profile.html" class="active">My Profile</a></li>
-                    <li><a href="connections.html">Connections</a></li>
-                    <li><button id="logout-button" class="btn btn-secondary">Logout</button></li>
-                </ul>
-            </nav>
-            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
-        </div>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+  </head>
+  <body>
+    <header class="main-header logged-in">
+      <div class="container">
+        <a href="dashboard.html" class="logo">
+          <img src="assets/images/logo.png" alt="MentorNook Logo" />
+          <span>MentorNook</span>
+        </a>
+        <nav>
+          <ul>
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="my_profile.html" class="active">My Profile</a></li>
+            <li><a href="connections.html">Connections</a></li>
+            <li>
+              <button id="logout-button" class="btn btn-secondary">
+                Logout
+              </button>
+            </li>
+          </ul>
+        </nav>
+        <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+      </div>
     </header>
 
     <main class="profile-view-page">
-        <div class="container">
-    
-            <div id="profile-content" style="display: none;">
-                <div class="profile-header">
-                    <img id="profile-view-picture" src="assets/images/profile_avatar_default.png" alt="My profile picture" width="150" height="150">
-                    <div class="profile-header-info">
-                        <h2 id="profile-view-name">Your Name</h2>
-                        <p id="profile-view-headline" class="profile-headline">Your Professional Headline</p>
-                        <span id="profile-view-role" class="user-role">Role</span>
-                        <a href="profile_setup.html" class="btn btn-primary edit-profile-btn">Edit Profile</a>
-                    </div>
-                </div>
-    
-                <div class="profile-details">
-                    <section class="profile-section">
-                        <h3>About Me</h3>
-                        <p id="profile-view-bio">Your detailed bio will appear here...</p>
-                    </section>
-    
-                    <section class="profile-section">
-                        <h3>Skills</h3>
-                        <div id="profile-view-skills" class="tags-container">
-                            </div>
-                    </section>
-    
-                     <section class="profile-section">
-                        <h3>Interests</h3>
-                         <div id="profile-view-interests" class="tags-container">
-                            </div>
-                    </section>
-    
-                     <section class="profile-section profile-contact-info">
-                        <h3>Contact & Links</h3>
-                        <p id="profile-view-location">Location: Location Info</p>
-                        <p id="profile-view-linkedin">LinkedIn: <a href="#" target="_blank" rel="noopener noreferrer">LinkedIn Profile</a></p>
-                        <p id="profile-view-website">Website: <a href="#" target="_blank" rel="noopener noreferrer">Personal Website</a></p>
-                    </section>
-                </div>
+      <div class="container">
+        <div id="profile-content" style="display: none">
+          <div class="profile-header">
+            <img
+              id="profile-view-picture"
+              src="assets/images/profile_avatar_default.png"
+              alt="My profile picture"
+              width="150"
+              height="150"
+            />
+            <div class="profile-header-info">
+              <h2 id="profile-view-name">Your Name</h2>
+              <p id="profile-view-headline" class="profile-headline">
+                Your Professional Headline
+              </p>
+              <span id="profile-view-role" class="user-role">Role</span>
+              <a
+                href="profile_setup.html"
+                class="btn btn-primary edit-profile-btn"
+                >Edit Profile</a
+              >
             </div>
-            <p id="loading-profile-message">Loading profile...</p>
-            <p id="error-profile-message" style="display: none; color: var(--danger-color); text-align: center;"></p>
-            </div>
+          </div>
+
+          <div class="profile-details">
+            <section class="profile-section">
+              <h3>About Me</h3>
+              <p id="profile-view-bio">Your detailed bio will appear here...</p>
+            </section>
+
+            <section class="profile-section">
+              <h3>Skills</h3>
+              <div id="profile-view-skills" class="tags-container"></div>
+            </section>
+
+            <section class="profile-section">
+              <h3>Interests</h3>
+              <div id="profile-view-interests" class="tags-container"></div>
+            </section>
+
+            <section class="profile-section profile-contact-info">
+              <h3>Contact & Links</h3>
+              <p id="profile-view-location">Location: Location Info</p>
+              <p id="profile-view-linkedin">
+                LinkedIn:
+                <a href="#" target="_blank" rel="noopener noreferrer"
+                  >LinkedIn Profile</a
+                >
+              </p>
+              <p id="profile-view-website">
+                Website:
+                <a href="#" target="_blank" rel="noopener noreferrer"
+                  >Personal Website</a
+                >
+              </p>
+            </section>
+          </div>
+        </div>
+        <p id="loading-profile-message">Loading profile...</p>
+        <p
+          id="error-profile-message"
+          style="display: none; color: var(--danger-color); text-align: center"
+        ></p>
+      </div>
     </main>
 
-     <footer class="main-footer">
-        <div class="container">
-            <p>&copy; <span id="current-year"></span> MentorNook. All rights reserved.</p>
-        </div>
+    <footer class="main-footer">
+      <div class="container">
+        <p>
+          &copy; <span id="current-year"></span> MentorNook. All rights
+          reserved.
+        </p>
+      </div>
     </footer>
 
-    <script>document.getElementById('current-year').textContent = new Date().getFullYear();</script>
+    <script>
+      document.getElementById("current-year").textContent =
+        new Date().getFullYear();
+    </script>
     <script src="js/utils.js"></script>
-    <script src="js/auth.js"></script> <script src="js/profile.js"></script> <script src="js/main.js"></script> </body>
+    <script src="js/auth.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/main.js"></script>
+  </body>
 </html>
