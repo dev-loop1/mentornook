@@ -101,16 +101,18 @@ class ProfileSerializer(serializers.ModelSerializer):
             return 'none'
 
     # Override update/create to handle skills/interests list -> string conversion
-    def _save_tags(self, instance, validated_data):
-        if 'skills' in validated_data:
-            instance.skills = ",".join(s.strip() for s in validated_data.pop('skills') if s.strip())
-        if 'interests' in validated_data:
-            instance.interests = ",".join(i.strip() for i in validated_data.pop('interests') if i.strip())
-        instance.save() # Save tags separately if needed
+    # def _save_tags(self, instance, validated_data):
+    #     if 'skills' in validated_data:
+    #         instance.skills = ",".join(s.strip() for s in validated_data.pop('skills') if s.strip())
+    #     if 'interests' in validated_data:
+    #         instance.interests = ",".join(i.strip() for i in validated_data.pop('interests') if i.strip())
+    #     instance.save() # Save tags separately if needed
 
     def update(self, instance, validated_data):
         # Handle tags first
-        self._save_tags(instance, validated_data)
+        print(f"--- ProfileSerializer Update ---") # Log entry
+        print(f"Raw validated_data received: {validated_data}") 
+        # self._save_tags(instance, validated_data)
         # Handle profile picture upload if present
         profile_picture = validated_data.pop('profile_picture', None)
         if profile_picture:
@@ -118,6 +120,8 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         # Update other fields normally
         instance = super().update(instance, validated_data)
+        print(f"Instance skills after update: {instance.skills}")
+        print(f"Instance interests after update: {instance.interests}")
         return instance
 
     # Note: Create handled implicitly by signal creating profile, update is primary here.
