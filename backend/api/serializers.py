@@ -2,6 +2,7 @@
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db import models
+from django.db.models import Q
 from rest_framework import serializers
 from .models import Profile, Connection
 
