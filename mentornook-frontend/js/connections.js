@@ -1,17 +1,36 @@
+/**
+ * connections.js
+ * Handles fetching and managing connection lists on connections.html.
+ * Uses minimal DOM updates after actions.
+ * Assumes functions from utils.js are available.
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
     // Only run loadConnections if on the connections page
     if (document.querySelector('.connections-page')) {
-        loadConnections();
+        console.log("Connections page detected. Initializing...");
+        loadConnections(); // Initial load of all lists
 
-         // Setup event listeners for action buttons using delegation
-         const connectionsContainer = document.querySelector('.connections-page .container');
-         if(connectionsContainer) {
-             connectionsContainer.addEventListener('click', handleConnectionListPageAction);
-         }
+        // Setup event listeners for action buttons using delegation
+        const connectionsContainer = document.querySelector('.connections-page .container');
+        if (connectionsContainer) {
+            console.log("Attaching event listener to connections container.");
+            // Ensure listener is attached only once
+            if (!connectionsContainer.dataset.listenerAttached) {
+                connectionsContainer.addEventListener('click', handleConnectionListPageAction);
+                connectionsContainer.dataset.listenerAttached = 'true';
+            }
+        } else {
+            console.error("Connections container not found for event listener setup.");
+        }
     }
 });
 
+/**
+ * Fetches all connection types and renders them into the respective lists (for initial load).
+ */
 async function loadConnections() {
+    console.log("--- loadConnections START (Initial Load) ---");
     const incomingList = document.getElementById('incoming-requests-list');
     const outgoingList = document.getElementById('outgoing-requests-list');
     const currentList = document.getElementById('current-connections-list');
@@ -22,127 +41,125 @@ async function loadConnections() {
     const noOutgoing = document.getElementById('no-outgoing');
     const noCurrent = document.getElementById('no-current');
 
-    // Ensure elements exist before proceeding
-     if (!incomingList || !outgoingList || !currentList || !loadingIncoming || !loadingOutgoing || !loadingCurrent || !noIncoming || !noOutgoing || !noCurrent) {
-         console.error("One or more connection list elements not found.");
-         return;
-     }
+    if (!incomingList || !outgoingList || !currentList || !loadingIncoming || !loadingOutgoing || !loadingCurrent || !noIncoming || !noOutgoing || !noCurrent) {
+        console.error("loadConnections: One or more list/message elements not found.");
+        return;
+    }
 
-    // Show loading indicators
-    loadingIncoming.style.display = 'block';
-    loadingOutgoing.style.display = 'block';
-    loadingCurrent.style.display = 'block';
-    noIncoming.style.display = 'none';
-    noOutgoing.style.display = 'none';
-    noCurrent.style.display = 'none';
-    incomingList.innerHTML = ''; // Clear previous content
+    // Show loading indicators, hide 'no results' messages
+    [loadingIncoming, loadingOutgoing, loadingCurrent].forEach(el => { if(el) el.style.display = 'block' });
+    [noIncoming, noOutgoing, noCurrent].forEach(el => { if(el) el.style.display = 'none' });
+    // Clear previous list content
+    incomingList.innerHTML = '';
     outgoingList.innerHTML = '';
     currentList.innerHTML = '';
 
-    // Get logged-in user info - needed for createConnectionItem
-    const loggedInUser = getUserInfo(); // Assumes getUserInfo() from utils.js returns { id, ... }
+    const loggedInUser = getUserInfo();
     if (!loggedInUser) {
-        console.error("User info not found, cannot determine connection details accurately.");
-        // Optionally redirect to login or show error
+        console.error("loadConnections: User info not found. Redirecting to login.");
         window.location.href = 'login.html';
         return;
     }
 
     try {
-        // **FIXED:** Endpoint URL with trailing slash, explicitly set requiresAuth: true
+        console.log("loadConnections: Fetching data from /connections/");
         const response = await WorkspaceApi('/connections/', 'GET', null, true);
+        console.log("loadConnections: API response received:", response);
 
-        // **FIXED:** Check response.success and access response.data
         if (response.success && response.data) {
-            const { incoming, outgoing, current } = response.data;
+            const { incoming = [], outgoing = [], current = [] } = response.data;
+            console.log(`loadConnections: Processing ${incoming.length} incoming, ${outgoing.length} outgoing, ${current.length} current.`);
 
-            // Render Incoming Requests
-            if (incoming && incoming.length > 0) {
-                // Pass loggedInUser.id to determine who sent the request
-                incoming.forEach(req => incomingList.appendChild(createConnectionItem(req, 'incoming', loggedInUser.id)));
-            } else {
-                noIncoming.style.display = 'block';
-            }
+            // Render lists
+            renderList(incomingList, noIncoming, incoming, 'incoming', loggedInUser.id);
+            renderList(outgoingList, noOutgoing, outgoing, 'outgoing', loggedInUser.id);
+            renderList(currentList, noCurrent, current, 'current', loggedInUser.id);
 
-            // Render Outgoing Requests
-            if (outgoing && outgoing.length > 0) {
-                 // Pass loggedInUser.id to determine who received the request
-                outgoing.forEach(req => outgoingList.appendChild(createConnectionItem(req, 'outgoing', loggedInUser.id)));
-            } else {
-                noOutgoing.style.display = 'block';
-            }
-
-            // Render Current Connections
-            if (current && current.length > 0) {
-                 // Pass loggedInUser.id to determine who the other user is
-                current.forEach(conn => currentList.appendChild(createConnectionItem(conn, 'current', loggedInUser.id)));
-            } else {
-                noCurrent.style.display = 'block';
-            }
+            console.log("--- loadConnections: Finished rendering lists ---");
 
         } else {
-            // **FIXED:** Use response.error
             const errorMsg = response.error || 'Failed to load connections.';
-            console.error("Failed to load connections:", errorMsg);
-            // Show error message in all sections
-            incomingList.innerHTML = `<p class="error-message">Error: ${errorMsg}</p>`;
-            outgoingList.innerHTML = `<p class="error-message">Error: ${errorMsg}</p>`;
-            currentList.innerHTML = `<p class="error-message">Error: ${errorMsg}</p>`;
+            console.error("loadConnections API call failed:", errorMsg);
+            const errorHtml = `<p class="error-message">Error: ${errorMsg}</p>`;
+            incomingList.innerHTML = errorHtml;
+            outgoingList.innerHTML = errorHtml;
+            currentList.innerHTML = errorHtml;
         }
-
-    } catch (error) { // Catch network/fetch errors
-        console.error("Error fetching connections:", error);
+    } catch (error) {
+        console.error("Exception during loadConnections fetch/render:", error);
         const errorMsg = error.message || 'An unexpected error occurred.';
-        incomingList.innerHTML = `<p class="error-message">${errorMsg}</p>`;
-        outgoingList.innerHTML = `<p class="error-message">${errorMsg}</p>`;
-        currentList.innerHTML = `<p class="error-message">${errorMsg}</p>`;
+        const errorHtml = `<p class="error-message">${errorMsg}</p>`;
+        incomingList.innerHTML = errorHtml;
+        outgoingList.innerHTML = errorHtml;
+        currentList.innerHTML = errorHtml;
     } finally {
-        // Hide loading indicators
-        loadingIncoming.style.display = 'none';
-        loadingOutgoing.style.display = 'none';
-        loadingCurrent.style.display = 'none';
+        console.log("loadConnections: Hiding loading indicators (finally block).");
+        [loadingIncoming, loadingOutgoing, loadingCurrent].forEach(el => { if(el) el.style.display = 'none' });
+        console.log("--- loadConnections END (Initial Load) ---");
+    }
+} // End loadConnections
+
+/**
+ * Helper function to render items into a specific list container.
+ * @param {HTMLElement} listElement - The UL/DIV element to append items to.
+ * @param {HTMLElement} noItemsElement - The element showing the 'no items' message.
+ * @param {Array<object>} items - Array of connection data objects.
+ * @param {'incoming'|'outgoing'|'current'} type - The type of list.
+ * @param {string|number} loggedInUserId - The current user's ID.
+ */
+function renderList(listElement, noItemsElement, items, type, loggedInUserId) {
+    listElement.innerHTML = ''; // Clear previous content
+    if (items && items.length > 0) {
+        if (noItemsElement) noItemsElement.style.display = 'none';
+        items.forEach(item => {
+            try {
+                // Ensure createConnectionItem exists and works
+                if (typeof createConnectionItem === 'function') {
+                     listElement.appendChild(createConnectionItem(item, type, loggedInUserId));
+                } else {
+                     console.error("createConnectionItem function is not defined!");
+                }
+            } catch (renderError) {
+                console.error(`Error creating/appending ${type} item:`, item, renderError);
+                // Optionally append an error placeholder for the specific item
+            }
+        });
+    } else {
+        if (noItemsElement) noItemsElement.style.display = 'block';
     }
 }
 
 /**
  * Creates the HTML element for a single connection item.
- * @param {object} item - The connection object from the backend API (includes nested requester/receiver/profile info).
- * @param {'incoming'|'outgoing'|'current'} type - The type of connection list item.
- * @param {number|string} loggedInUserId - The ID of the currently logged-in user.
- * @returns {HTMLElement} The created div element for the connection item.
+ * (Keep the previously corrected version of createConnectionItem here)
+ * @param {object} item - Connection object from API.
+ * @param {'incoming'|'outgoing'|'current'} type - List type.
+ * @param {string|number} loggedInUserId - Current user's ID.
+ * @returns {HTMLElement} The list item element.
  */
 function createConnectionItem(item, type, loggedInUserId) {
     const div = document.createElement('div');
     div.className = 'connection-item';
-    div.dataset.connectionId = item.id; // Use item.id (correct field name from serializer)
+    div.dataset.connectionId = item.id;
 
-    // --- **FIXED:** Determine the *other* user's details ---
     let otherUser = null;
     let otherUserProfile = null;
-
-    // Compare IDs as numbers or strings consistently
     const loggedInUserIdStr = String(loggedInUserId);
     const requesterIdStr = String(item.requester?.id);
     const receiverIdStr = String(item.receiver?.id);
 
-
     if (requesterIdStr === loggedInUserIdStr) {
-        // Logged-in user sent the request or is part of connection
         otherUser = item.receiver;
         otherUserProfile = item.receiver_profile;
     } else if (receiverIdStr === loggedInUserIdStr) {
-         // Logged-in user received the request or is part of connection
         otherUser = item.requester;
         otherUserProfile = item.requester_profile;
     } else {
-        // Should not happen if API returns correct data, but handle gracefully
         console.warn("Could not determine other user in connection item:", item);
-        // Fallback display or skip rendering
-         otherUser = { id: 'unknown', username: 'Unknown User', first_name: '', last_name: '' };
-         otherUserProfile = { role: 'unknown', profile_picture_url: null };
+        otherUser = { id: 'unknown', username: 'Unknown User', first_name:'', last_name:'' };
+        otherUserProfile = { role: '', profile_picture_url: null };
     }
 
-    // Extract details safely using optional chaining (?.)
     const otherUserId = otherUser?.id || 'unknown';
     const otherUserName = (otherUser?.first_name && otherUser?.last_name)
                             ? `${otherUser.first_name} ${otherUser.last_name}`
@@ -150,10 +167,7 @@ function createConnectionItem(item, type, loggedInUserId) {
     const otherUserRole = otherUserProfile?.role || '';
     const otherUserProfilePic = otherUserProfile?.profile_picture_url || 'assets/images/profile_avatar_default.png';
 
-    // Store the *other* user's ID for profile linking
     div.dataset.userId = otherUserId;
-    // --- End Determining Other User ---
-
 
     const dateValue = (type === 'current' ? item.accepted_at : item.created_at);
     const date = dateValue ? new Date(dateValue).toLocaleDateString() : 'N/A';
@@ -161,30 +175,20 @@ function createConnectionItem(item, type, loggedInUserId) {
     if (type === 'incoming' || type === 'outgoing') dateLabel = `Sent on: ${date}`;
     if (type === 'current') dateLabel = `Connected since: ${date}`;
 
-
-    // --- Actions based on connection type ---
     let actionsHtml = '';
+    // --- Generate buttons with appropriate data attributes ---
     switch (type) {
-        case 'incoming': // Received by logged-in user
-            actionsHtml = `
-                <button class="btn btn-success btn-sm accept-request" data-action="accept">Accept</button>
-                <button class="btn btn-danger btn-sm decline-request" data-action="decline">Decline</button>
-            `;
+        case 'incoming':
+            actionsHtml = `<button class="btn btn-success btn-sm accept-request" data-action="accept">Accept</button> <button class="btn btn-danger btn-sm decline-request" data-action="decline">Decline</button>`;
             break;
-        case 'outgoing': // Sent by logged-in user
-            actionsHtml = `
-                <button class="btn btn-warning btn-sm cancel-request" data-action="cancel">Cancel Request</button>
-            `;
+        case 'outgoing':
+            actionsHtml = `<button class="btn btn-warning btn-sm cancel-request" data-action="cancel">Cancel Request</button>`;
             break;
-        case 'current': // Accepted connection
-            actionsHtml = `
-                <a href="user_profile.html?id=${otherUserId}" class="btn btn-secondary btn-sm">View Profile</a>
-                <button class="btn btn-danger btn-sm remove-connection" data-action="remove">Remove</button>
-            `;
+        case 'current':
+            actionsHtml = `<a href="user_profile.html?id=${otherUserId}" class="btn btn-secondary btn-sm">View Profile</a> <button class="btn btn-danger btn-sm remove-connection" data-action="remove">Remove</button>`;
             break;
     }
 
-    // --- Build Inner HTML ---
     div.innerHTML = `
         <img src="${otherUserProfilePic}" alt="${otherUserName}'s profile picture">
         <div class="connection-info">
@@ -197,64 +201,109 @@ function createConnectionItem(item, type, loggedInUserId) {
         </div>
     `;
     return div;
-}
-
+} // End createConnectionItem
 
 /**
- * Event handler for Accept/Decline/Cancel/Remove buttons on the connections page.
+ * Handles clicks on Accept/Decline/Cancel/Remove buttons using minimal DOM updates.
  * @param {Event} event - The click event object.
  */
 async function handleConnectionListPageAction(event) {
     const button = event.target.closest('button[data-action]');
-    if (!button) return; // Click wasn't on an action button
+    if (!button || button.disabled) return;
 
     const action = button.dataset.action;
     const connectionItem = button.closest('.connection-item');
     const connectionId = connectionItem?.dataset.connectionId;
+    const originatingList = connectionItem?.parentElement; // Get the list (UL/DIV) the item belongs to
 
-    // Basic validation
-    if (!action || !connectionId) {
-        console.error("Missing action or connectionId for connection management.");
+    if (!action || !connectionId || !connectionItem || !originatingList) {
+        console.error("Could not process action: Missing action, connectionId, item reference, or parent list.");
         return;
     }
 
-    button.disabled = true;
+    // Store original state before disabling
     const originalText = button.textContent;
-    button.textContent = '...'; // Indicate processing
+    button.disabled = true;
+    button.textContent = '...';
+
+    // Find sibling buttons in the same action group to potentially re-enable on error
+    const actionContainer = button.closest('.connection-actions');
+    const siblingButtons = actionContainer ? actionContainer.querySelectorAll('button') : [button];
+    siblingButtons.forEach(btn => { if(btn !== button) btn.disabled = true; });
 
     try {
         let response;
-        let method;
-        let data = null;
+        let method = (action === 'accept' || action === 'decline') ? 'PUT' : 'DELETE';
+        let data = (action === 'accept' || action === 'decline') ? { action: action } : null;
 
-        // Determine method and data based on action
-        if (action === 'accept' || action === 'decline') {
-            method = 'PUT';
-            data = { action: action }; // Send action in body for PUT
-        } else if (action === 'cancel' || action === 'remove') {
-            method = 'DELETE'; // Cancel (pending) and Remove (accepted) use DELETE
-            data = null;
-        } else {
-             throw new Error(`Unknown connection action: ${action}`);
-        }
-
-        // **FIXED:** Endpoint URL with trailing slash, correct method, add requiresAuth: true
+        console.log(`ACTION: ${action}, ConnID: ${connectionId}, Method: ${method}`);
         response = await WorkspaceApi(`/connections/${connectionId}/`, method, data, true);
+        console.log(`RESPONSE for ${action} ConnID ${connectionId}:`, response);
 
-        // **FIXED:** Check response.success and use response.error
-        if (response.success) {
-            // Refresh the connections list to show the update
-            // Add a small visual delay/feedback? Optional.
-            loadConnections();
+        if (response.success || response.status === 204) {
+            console.log(`Action ${action} successful for ConnID ${connectionId}. Updating UI minimally...`);
+
+            // --- Minimal DOM Update Logic ---
+            const loggedInUser = getUserInfo(); // Needed for potential re-render
+            if (!loggedInUser) throw new Error("Cannot update UI without logged-in user info."); // Should not happen
+
+            if (action === 'accept') {
+                 // 1. Remove from 'Incoming' list
+                 connectionItem.remove();
+                 checkIfListEmpty(originatingList.id); // Check if incoming list became empty
+
+                 // 2. Add to 'Current' list (assuming response.data contains updated connection)
+                 const currentList = document.getElementById('current-connections-list');
+                 if (currentList && response.data && typeof createConnectionItem === 'function') {
+                     currentList.appendChild(createConnectionItem(response.data, 'current', loggedInUser.id));
+                     checkIfListEmpty('current-connections-list'); // Hide 'no current' message if needed
+                 } else if (!response.data) {
+                      console.warn("Accept successful, but no connection data returned to add to 'current' list. Full refresh might be needed eventually.");
+                 } else {
+                     console.error("Could not find 'current-connections-list' or 'createConnectionItem' to add accepted connection.");
+                 }
+
+            } else if (action === 'decline' || action === 'cancel' || action === 'remove') {
+                 // Just remove the item from its current list
+                 connectionItem.remove();
+                 checkIfListEmpty(originatingList.id); // Check if list became empty
+            }
+            // --- End Minimal DOM Update ---
+
+            console.log("Minimal UI update complete.");
+            // No need to re-enable buttons as the item/buttons were removed or replaced.
+
         } else {
+            // Initial action API call failed
             alert(`Action failed: ${response.error || 'Unknown error'}`);
-            button.disabled = false;
+            siblingButtons.forEach(btn => btn.disabled = false); // Re-enable buttons
             button.textContent = originalText;
         }
-    } catch (error) { // Catch network/fetch errors or errors thrown above
+    } catch (error) {
+        // Exception occurred
         console.error(`Error performing connection action ${action}:`, error);
         alert(`An error occurred: ${error.message || 'Please try again.'}`);
-        button.disabled = false;
+        siblingButtons.forEach(btn => btn.disabled = false); // Re-enable buttons
         button.textContent = originalText;
     }
 } // End handleConnectionListPageAction
+
+
+/**
+ * Checks if a list is empty after removing an item and shows/hides the corresponding "no items" message.
+ * @param {string} listId - The ID of the list element (e.g., 'incoming-requests-list').
+ */
+function checkIfListEmpty(listId) {
+    const listElement = document.getElementById(listId);
+    const listSection = listElement?.closest('.connections-section'); // Find parent section
+    if (!listElement || !listSection) return;
+
+    const noItemsMessage = listSection.querySelector('[id^="no-"]'); // Find p tag starting with id="no-"
+    if (!noItemsMessage) return;
+
+    // Check if listElement has any .connection-item children left
+    const hasItems = listElement.querySelector('.connection-item') !== null;
+
+    console.log(`Checking if list ${listId} is empty: ${!hasItems}`);
+    noItemsMessage.style.display = hasItems ? 'none' : 'block';
+}

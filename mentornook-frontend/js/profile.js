@@ -183,6 +183,19 @@ async function setupProfileForm() {
         }
         // --- End Data Preparation ---
 
+        console.log('--- Seile Data ---');
+        if (dataToSend instanceof FormData) {
+            // Log FormData entries (won't show file content easily)
+            for (let pair of dataToSend.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
+            }
+        } else {
+            // Log JSON object
+            console.log(JSON.stringify(dataToSend, null, 2));
+        }
+        // The actual API call follows:
+        // const response = await WorkspaceApi('/profile/', method, dataToSend, true);nding Prof
+
 
         // --- Call Backend API to Save ---
         try {
@@ -613,17 +626,23 @@ async function handleConnectionActionClick(event) {
                 throw new Error(`Unknown connection action: ${action}`);
         }
 
+        console.log(`Action: ${action}, Target: ${targetUserId}, ConnID: ${connectionId}, Method: ${method}`); // Log action details
         response = await WorkspaceApi(endpoint, method, data, true); // All connection actions require auth
+        
 
         // Handle API Response
         if (response.success || response.status === 204) { // Treat 204 No Content as success for DELETE
             // Refresh button state by re-fetching profile data which includes updated connectionStatus
+            console.log(`Action ${action} successful for Target ${targetUserId}. Refreshing button state...`); // Log success
             const profileEndpoint = `/profiles/${targetUserId}/`; // Use public profile endpoint
             const updatedProfileResponse = await WorkspaceApi(profileEndpoint, 'GET', null, true); // Assume auth needed for status
 
             if (updatedProfileResponse.success && updatedProfileResponse.data) {
+                console.log('Profile refresh successful. Calling setupConnectionButton with status:', updatedProfileResponse.data.connectionStatus); // Log before UI update
                  // Re-render button section with new status
                  setupConnectionButton(actionArea, targetUserId, updatedProfileResponse.data.connectionStatus, loggedInUserInfo.id);
+                 console.log('setupConnectionButton potentially complete.'); // Log after UI update attempt
+
             } else {
                 console.error("Failed to refresh profile after connection action:", updatedProfileResponse.error);
                 actionArea.innerHTML = '<p class="error-message">Action successful, but failed to refresh status.</p>';

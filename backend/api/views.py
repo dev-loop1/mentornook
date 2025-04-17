@@ -113,38 +113,74 @@ class PublicProfileDetailView(generics.RetrieveAPIView):
     lookup_field = 'user_id' # Look up profile by user ID in URL
 
 
-# --- User Discovery View ---
 class UserListView(generics.ListAPIView):
     """
     View to list profiles for user discovery, with filtering and search.
+
+    - Excludes the profile of the currently logged-in user (if authenticated).
+    - Excludes users who haven't set a role or are inactive.
+    - Accessible by anyone (controlled by permission_classes).
+    - Supports filtering via query parameters:
+        - `role`: Exact match (e.g., 'mentor', 'mentee').
+        - `skills`: Comma-separated string; matches if profile contains ANY listed skill (case-insensitive).
+        - `interests`: Comma-separated string; matches if profile contains ANY listed interest (case-insensitive).
+        - `search`: Matches keywords in username, first/last name, bio, or headline (case-insensitive).
+    - Uses default pagination defined in settings.
+    - Orders results by username by default.
     """
     serializer_class = ProfileSerializer
-    permission_classes = [permissions.AllowAny] # Allow Browse without login
-    filter_backends = [filters.SearchFilter] # Use DRF's SearchFilter
-    search_fields = ['user__username', 'user__first_name', 'user__last_name', 'bio', 'headline'] # Fields to search against
-    # Pagination is handled by default settings
+    permission_classes = [permissions.AllowAny] # Allows Browse without needing to log in
+
+    # Enable DRF's built-in search filter
+    filter_backends = [filters.SearchFilter]
+    # Define fields the 'search' query parameter (e.g., /api/users/?search=python) will target
+    search_fields = [
+        'user__username',
+        'user__first_name',
+        'user__last_name',
+        'bio',
+        'headline'
+    ]
 
     def get_queryset(self):
-        queryset = Profile.objects.select_related('user').filter(user__is_active=True).exclude(role__isnull=True).exclude(role__exact='') # Exclude users with no profile role set yet
+        """
+        Builds the queryset by filtering active users with roles,
+        excluding the current user, and applying query parameter filters.
+        """
+        # Start with base queryset: Profiles linked to active users, excluding those with no role.
+        # select_related('user') helps optimize by fetching user data in the same query.
+        queryset = Profile.objects.select_related('user').filter(
+            user__is_active=True
+        ).exclude(role__isnull=True).exclude(role__exact='')
 
-        # Manual filtering for role, skills, interests (DRF filters can also be used)
-        role = self.request.query_params.get('role', None)
+        # --- Exclude the currently logged-in user ---
+        if self.request.user.is_authenticated:
+            queryset = queryset.exclude(user=self.request.user)
+        # --- End exclusion ---
+
+        # --- Apply manual filtering based on query parameters ---
+        # Role Filter
+        role_filter = self.request.query_params.get('role', None)
+        if role_filter:
+            # Ensure the provided role is valid if using choices, otherwise direct filter:
+            # if role_filter in dict(Profile.ROLE_CHOICES): # Example validation
+            queryset = queryset.filter(role=role_filter)
+
+        # Skills Filter (matches if profile contains ANY of the comma-separated skills)
         skills_query = self.request.query_params.get('skills', None)
-        interests_query = self.request.query_params.get('interests', None)
-
-        if role:
-            queryset = queryset.filter(role=role)
-
-        # Simple comma-separated query filter (case-insensitive contains)
         if skills_query:
+             # Split, strip whitespace, and filter out empty strings
              skills = [s.strip() for s in skills_query.split(',') if s.strip()]
              if skills:
-                # Build Q objects for OR condition within skills
+                # Create a Q object for each skill check (case-insensitive contains)
+                # Combine them with OR (|) logic
                 q_objects = Q()
                 for skill in skills:
                     q_objects |= Q(skills__icontains=skill)
-                queryset = queryset.filter(q_objects)
+                queryset = queryset.filter(q_objects) # Apply the combined OR filter
 
+        # Interests Filter (matches if profile contains ANY of the comma-separated interests)
+        interests_query = self.request.query_params.get('interests', None)
         if interests_query:
              interests = [i.strip() for i in interests_query.split(',') if i.strip()]
              if interests:
@@ -152,8 +188,14 @@ class UserListView(generics.ListAPIView):
                 for interest in interests:
                     q_objects |= Q(interests__icontains=interest)
                 queryset = queryset.filter(q_objects)
+        # --- End manual filtering ---
 
-        return queryset.order_by('user__username') # Default ordering
+        # Note: The 'search' filter (e.g., ?search=keyword) is applied automatically
+        # by the SearchFilter backend using the `search_fields` defined above.
+
+        # Apply default ordering
+        return queryset.order_by('user__username')
+
 
 
 # --- Connection Views ---
