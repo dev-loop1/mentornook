@@ -13,18 +13,20 @@ class BasicUserSerializer(serializers.ModelSerializer):
 
 # Profile Serializer (handles conversion between list/string for skills/interests)
 class ProfileSerializer(serializers.ModelSerializer):
-    user = BasicUserSerializer(read_only=True) # Display basic user info
-    name = serializers.SerializerMethodField(read_only=True) # Convenience field for full name
-    skills = serializers.ListField(
-       child=serializers.CharField(max_length=100), write_only=True, required=False, allow_empty=True
-    )
-    interests = serializers.ListField(
-       child=serializers.CharField(max_length=100), write_only=True, required=False, allow_empty=True
-    )
-    # Fields for reading skills/interests as lists
+    user = BasicUserSerializer(read_only=True)
+    name = serializers.SerializerMethodField(read_only=True)
+
+    # **FIXED:** Expect strings for writing skills/interests
+    skills = serializers.CharField(write_only=True, required=False, allow_blank=True, help_text="Comma-separated skills")
+    interests = serializers.CharField(write_only=True, required=False, allow_blank=True, help_text="Comma-separated interests")
+
+    # Keep these for reading the data as lists
     skills_list = serializers.SerializerMethodField(read_only=True)
     interests_list = serializers.SerializerMethodField(read_only=True)
     profile_picture_url = serializers.SerializerMethodField(read_only=True)
+
+    # **NEW:** Add connection status field
+    connectionStatus = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Profile
@@ -34,9 +36,10 @@ class ProfileSerializer(serializers.ModelSerializer):
             'skills_list', 'interests_list', # Read-only lists
             'profile_picture', 'profile_picture_url', # Raw field for upload, URL for display
             'location', 'linkedin_url', 'website_url',
+            'connectionStatus',
             'updated_at'
         ]
-        read_only_fields = ['user', 'id', 'updated_at', 'profile_picture_url', 'skills_list', 'interests_list', 'name']
+        read_only_fields = ['user', 'id', 'updated_at', 'profile_picture_url', 'skills_list', 'interests_list', 'name', 'connectionStatus']
         extra_kwargs = {
             'profile_picture': {'write_only': True, 'required': False} # Handle upload separately
         }
@@ -47,20 +50,19 @@ class ProfileSerializer(serializers.ModelSerializer):
         lname = obj.user.last_name
         if fname and lname:
             return f"{fname} {lname}"
-        elif fname:
-            return fname
-        elif lname:
-            return lname
-        else:
-            return obj.user.username
+        
+        return fname or lname or obj.user.username
 
     def get_profile_picture_url(self, obj):
         request = self.context.get('request')
         if obj.profile_picture and hasattr(obj.profile_picture, 'url') and request:
-            return request.build_absolute_uri(obj.profile_picture.url)
-        # Provide URL to default image if necessary
-        # You might need to manually construct the path to the default image in media or static
-        # For simplicity, returning None if no picture is uploaded. Frontend should handle default.
+            try:
+                return request.build_absolute_uri(obj.profile_picture.url)
+            except Exception as e:
+                 print(f"Error building profile pic URL: {e}") # Log error
+                 return None
+        # Optional: return URL to a static default image if needed
+        
         return None # Frontend will use its default if this is null
 
     def get_skills_list(self, obj):
@@ -68,6 +70,34 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     def get_interests_list(self, obj):
          return obj.get_interests_list()
+    
+    def get_connectionStatus(self, obj):
+        request = self.context.get('request')
+        # Ensure request and user exist and are authenticated
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
+            return 'none'
+
+        user = request.user
+        profile_user = obj.user # The user whose profile is being serialized
+
+        if user == profile_user:
+            return 'self'
+
+        # Check for existing connection using Q objects for OR condition
+        connection = Connection.objects.filter(
+            (Q(requester=user) & Q(receiver=profile_user)) |
+            (Q(requester=profile_user) & Q(receiver=user))
+        ).first() # Get the first matching connection, if any
+
+        if not connection:
+            return 'none'
+        elif connection.status == 'accepted':
+            return 'connected'
+        elif connection.status == 'pending':
+            # Check who the requester was to determine sent/received
+            return 'pending_sent' if connection.requester == user else 'pending_received'
+        else: # Declined or other statuses treated as 'none' for button logic
+            return 'none'
 
     # Override update/create to handle skills/interests list -> string conversion
     def _save_tags(self, instance, validated_data):
