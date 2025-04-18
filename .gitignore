@@ -9,20 +9,20 @@ db.sqlite3
 *.log
 local_settings.py
 
-# Virtual Environment (assuming it's at the project root)
+# Virtual Environment
 /venv/
-# Add other common names if you use them:
+
 # /.venv/
 # /env/
 # /virtual/
 # /venv.bak/
 # /env.bak/
 
-# Django Media Files (User Uploads - usually not tracked)
+# Django Media Files 
 /backend/media/
 
-# Django Static Files (Collected for deployment - usually not tracked)
-# Adjust 'staticfiles' if your STATIC_ROOT is different
+# Django Static Files 
+
 /backend/staticfiles/
 
 # Environment variables
@@ -39,7 +39,7 @@ local_settings.py
 # .parcel-cache/
 
 # --- OS Specific ---
-# macOS
+macOS
 .DS_Store
 ._*
 .Spotlight-V100

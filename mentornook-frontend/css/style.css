@@ -135,7 +135,7 @@ ul {
     padding-bottom: 8px;
     padding-left: 6px;
     padding-right: 6px;
-    line-height: 1.5; /* Ensure consistent line-height with new padding */
+    line-height: 1.5; 
 }
 
 
@@ -147,20 +147,20 @@ ul {
 }
 
 .btn-secondary {
-    color: #ffffff; /* CORRECT: White text */
-    background-color: rgb(0, 123, 255); /* Requested blue */
+    color: #ffffff; 
+    background-color: rgb(0, 123, 255); 
     border-color: rgb(0, 123, 255); /* Border matches background */
-    /* Requested padding */
+   
     padding-top: 8px;
     padding-bottom: 8px;
     padding-left: 6px;
     padding-right: 6px;
-    line-height: 1.5; /* Ensure consistent line-height with new padding */
+    line-height: 1.5; 
 }
 
 
 .btn-secondary:hover {
-    color: #ffffff; /* CORRECT: Keep text white */
+    color: #ffffff;
     background-color: rgb(0, 86, 179); /* Darker blue on hover */
     border-color: rgb(0, 86, 179); /* Match hover background */
 }
@@ -343,6 +343,10 @@ select {
     padding: 0.5rem 0; /* Add vertical padding for larger click area */
 }
 
+.main-header nav button.btn {
+    color: #ffffff;
+}
+
 .main-header nav a:hover,
 .main-header nav a.active {
     color: var(--primary-color);
@@ -360,10 +364,10 @@ select {
     padding-bottom: 8px;
     padding-left: 6px;
     padding-right: 6px;
-    font-size: 0.9rem; /* Optional: Keep slightly smaller in nav */
+    font-size: 0.9rem; 
     margin-left: 0.5rem;
     vertical-align: middle;
-    color: #ffffff; /* ADDED: Explicitly ensure white text for header buttons */
+    color: #ffffff; 
     /* Background and border are inherited from .btn-primary/secondary */
 }
 
@@ -488,7 +492,6 @@ select {
     padding: var(--spacing-unit);
 }
 
-/* --- Additions/Modifications to style.css --- */
 
 /* Feature Icons on index.html */
 .feature-icon {
@@ -571,8 +574,7 @@ select {
     margin-top: 0.25rem;
 }
 
-/* --- Optional: Adjustments in responsive.css if needed --- */
-/* You might need to adjust tag/input sizes on smaller screens if they wrap awkwardly */
+
 
 .feature-item h3 {
     font-size: 1.25rem;
@@ -623,7 +625,7 @@ select {
     display: flex;
     align-items: center; /* Align input and button vertically */
     gap: 0.5rem; /* Space between input and button */
-    background-color: var(--light-color); /* Optional background */
+    background-color: var(--light-color); 
     padding: 0.5rem; /* Padding around */
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
@@ -650,7 +652,7 @@ select {
      box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
-/* Optional: Style for clearing search input 'x' button if browser adds one */
+/* Style for clearing search input 'x' button if browser adds one */
 .search-form input[type="search"]::-webkit-search-cancel-button,
 .search-form input[type="search"]::-webkit-search-decoration {
   -webkit-appearance: none;

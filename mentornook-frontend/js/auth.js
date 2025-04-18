@@ -1,3 +1,10 @@
+/**
+ * auth.js
+ * Handles user authentication logic: Login and Signup form submissions.
+ * Interacts with the backend API via WorkspaceApi from utils.js.
+ * Manages user session state via localStorage helpers from utils.js.
+ */
+
 document.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("login-form");
   const signupForm = document.getElementById("signup-form");
@@ -5,16 +12,18 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Login Form Handling ---
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      clearAllErrors(loginForm);
+      e.preventDefault(); // Prevent default form submission
+      clearAllErrors(loginForm); // Clear previous validation errors
+
       const loginButton = loginForm.querySelector('button[type="submit"]');
       loginButton.disabled = true;
       loginButton.textContent = "Logging in...";
 
+      // Get form values
       const email = document.getElementById("login-email").value;
       const password = document.getElementById("login-password").value;
 
-      // --- Frontend Validation ---
+      // --- Simple Frontend Validation ---
       let isValid = true;
       if (isEmpty(email) || !validateEmail(email)) {
         showError("email-error", "Please enter a valid email address.");
@@ -26,29 +35,29 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (!isValid) {
+        // Re-enable button if validation fails
         loginButton.disabled = false;
         loginButton.textContent = "Login";
         return;
       }
       // --- End Validation ---
 
-      // --- Call Backend API ---
+      // --- API Call for Login ---
       try {
-        // **FIXED:** Endpoint URL, data payload (use email as username), requiresAuth: false
+        // Call backend login endpoint (expects username=email)
         const response = await WorkspaceApi(
-          "/login/", // Added trailing slash
+          "/login/",
           "POST",
-          { username: email, password: password }, // Send email as username
-          false // Login does not require auth
+          { username: email, password: password },
+          false // Authentication not required for login itself
         );
 
-        // **FIXED:** Check response.success and access response.data
         if (response.success && response.data.token) {
-          // Backend sends token and user info nested in 'data'
+          // Login successful: save token/user info, redirect to dashboard
           saveAuthInfo(response.data.token, response.data.user);
-          window.location.href = "dashboard.html"; // Redirect after successful login
+          window.location.href = "dashboard.html";
         } else {
-          // **FIXED:** Use response.error
+          // Login failed: show error message from backend or default
           showGeneralError(
             "login-general-error",
             response.error || "Login failed. Please check credentials."
@@ -57,9 +66,8 @@ document.addEventListener("DOMContentLoaded", () => {
           loginButton.textContent = "Login";
         }
       } catch (error) {
-        // Catch potential errors from WorkspaceApi itself (e.g., network)
-        console.error("Login error:", error);
-        // **FIXED:** Use error.message if available, fallback
+        // Handle network or other unexpected errors during API call
+        console.error("Login error:", error); // Keep error logs for diagnosing production issues
         showGeneralError(
           "login-general-error",
           error.message ||
@@ -70,17 +78,19 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       // --- End API Call ---
     });
-  }
+  } // End if(loginForm)
 
   // --- Signup Form Handling ---
   if (signupForm) {
     signupForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      clearAllErrors(signupForm);
+      e.preventDefault(); // Prevent default form submission
+      clearAllErrors(signupForm); // Clear previous validation errors
+
       const signupButton = signupForm.querySelector('button[type="submit"]');
       signupButton.disabled = true;
       signupButton.textContent = "Signing up...";
 
+      // Get form values
       const fullname = document.getElementById("signup-fullname").value;
       const email = document.getElementById("signup-email").value;
       const password = document.getElementById("signup-password").value;
@@ -88,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "signup-confirm-password"
       ).value;
 
-      // --- Frontend Validation ---
+      // --- Simple Frontend Validation ---
       let isValid = true;
       if (isEmpty(fullname)) {
         showError("fullname-error", "Please enter your full name.");
@@ -111,40 +121,36 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (!isValid) {
+        // Re-enable button if validation fails
         signupButton.disabled = false;
         signupButton.textContent = "Sign Up";
         return;
       }
       // --- End Validation ---
 
-      // --- Prepare Registration Data for Backend ---
-      // **FIXED:** Create data object matching UserRegistrationSerializer fields
+      // --- Prepare Registration Data ---
+      // Create data object matching backend UserRegistrationSerializer fields
       const registrationData = {
-        username: email, // Use email as username (or prompt user for a separate username)
+        username: email, // Using email as username for simplicity
         email: email,
         password: password,
-        // Simple split of fullname - adjust if needed
         first_name: fullname.split(" ")[0] || "",
         last_name: fullname.split(" ").slice(1).join(" ") || "",
       };
       // --- End Data Preparation ---
 
-      // --- Call Backend API for Registration ---
+      // --- API Call for Registration ---
       try {
-        // **FIXED:** Endpoint URL, pass prepared registrationData
         const response = await WorkspaceApi(
           "/register/",
           "POST",
           registrationData,
           false
-        ); // Register does not require auth
+        ); // Registration is public
 
-        // **FIXED:** Check response.success
         if (response.success) {
-          // Registration successful, now try to automatically log in
-          console.log("Registration successful. Attempting auto-login...");
+          // Registration successful, attempt auto-login for better UX
           try {
-            // **FIXED:** Use correct login payload (username: email) and requiresAuth: false
             const loginResponse = await WorkspaceApi(
               "/login/",
               "POST",
@@ -152,14 +158,16 @@ document.addEventListener("DOMContentLoaded", () => {
               false
             );
 
-            // **FIXED:** Check loginResponse.success and access data correctly
             if (loginResponse.success && loginResponse.data.token) {
+              // Auto-login successful
               saveAuthInfo(loginResponse.data.token, loginResponse.data.user);
               window.location.href = "profile_setup.html"; // Redirect to profile setup
             } else {
-              // Auto-login failed after successful registration
-              console.error("Auto-login failed:", loginResponse.error);
-              // **FIXED:** Use loginResponse.error
+              // Auto-login failed after registration
+              console.warn(
+                "Auto-login failed after registration:",
+                loginResponse.error
+              ); // Keep useful warnings
               showGeneralError(
                 "signup-general-error",
                 `Registration successful, but auto-login failed: ${
@@ -168,11 +176,12 @@ document.addEventListener("DOMContentLoaded", () => {
               );
               signupButton.disabled = false;
               signupButton.textContent = "Sign Up";
-              // Redirect to login page so user can log in manually
-              // setTimeout(() => { window.location.href = 'login.html'; }, 3000); // Optional delay
+              // Consider redirecting to login page here after a short delay
+              // setTimeout(() => { window.location.href = 'login.html'; }, 3000);
             }
           } catch (loginError) {
-            console.error("Error during auto-login attempt:", loginError);
+            // Exception during auto-login attempt
+            console.error("Exception during auto-login attempt:", loginError); // Keep error logs
             showGeneralError(
               "signup-general-error",
               `Registration successful, but auto-login failed: ${
@@ -183,28 +192,28 @@ document.addEventListener("DOMContentLoaded", () => {
             signupButton.textContent = "Sign Up";
           }
         } else {
-          // Registration itself failed
-          // **FIXED:** Use response.error
-          // Extract specific field errors if backend provides them (e.g., email already exists)
+          // Registration API call itself failed
+          // Attempt to parse specific field errors from backend response
           let errorMessage =
             response.error || "Registration failed. Please try again.";
           if (response.data && typeof response.data === "object") {
-            // Attempt to show specific field errors from DRF serializers
-            if (response.data.username)
-              errorMessage = `Username: ${response.data.username.join(", ")}`;
-            else if (response.data.email)
-              errorMessage = `Email: ${response.data.email.join(", ")}`;
-            else if (response.data.password)
-              errorMessage = `Password: ${response.data.password.join(", ")}`;
+            const fieldErrors = Object.entries(response.data)
+              .map(
+                ([field, errors]) =>
+                  `${field}: ${
+                    Array.isArray(errors) ? errors.join(", ") : errors
+                  }`
+              )
+              .join("; ");
+            if (fieldErrors) errorMessage = fieldErrors;
           }
           showGeneralError("signup-general-error", errorMessage);
           signupButton.disabled = false;
           signupButton.textContent = "Sign Up";
         }
       } catch (error) {
-        // Catch potential errors from WorkspaceApi itself (e.g., network)
-        console.error("Signup error:", error);
-        // **FIXED:** Use error.message if available, fallback
+        // Handle network or other unexpected errors during registration API call
+        console.error("Signup error:", error); // Keep error logs
         showGeneralError(
           "signup-general-error",
           error.message ||
@@ -215,27 +224,24 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       // --- End API Call ---
     });
-  }
+  } // End if(signupForm)
 
-  // --- Logout Handling (Example - trigger this from a button click in main.js/header) ---
-  // This function could be called by an event listener elsewhere
+  // --- Logout Handling ---
   async function handleLogout() {
-    console.log("Attempting logout...");
+    // console.log("Attempting logout..."); // DEBUG log removed
     try {
-      // Logout doesn't need data, but requires auth token
-      const response = await WorkspaceApi("/logout/", "POST", null, true);
-
-      // Even if logout fails server-side (e.g., token already invalid), clear client-side
+      const response = await WorkspaceApi("/logout/", "POST", null, true); // Requires auth
       if (!response.success) {
+        // Log server-side logout failure, but proceed with client-side logout
         console.warn(
-          "Server logout failed (maybe token was already invalid?):",
+          "Server logout failed (token might be expired/invalid):",
           response.error
-        );
+        ); // Keep useful warnings
       }
     } catch (error) {
-      console.error("Error during logout API call:", error);
+      console.error("Error during logout API call:", error); // Keep error logs
     } finally {
-      // Always clear local storage and redirect on logout attempt
+      // Always clear local storage and redirect regardless of API call outcome
       clearAuthInfo();
       window.location.href = "login.html";
     }

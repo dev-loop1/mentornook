@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
     header.addEventListener("click", async (event) => {
       // Make handler async
       if (event.target && event.target.id === "logout-button") {
-        console.log("Logout button clicked");
+      //  console.log("Logout button clicked");
         event.target.disabled = true; // Disable button during logout
         event.target.textContent = "Logging out...";
 
@@ -80,7 +80,7 @@ function handleAuthState() {
     if (header) header.classList.replace("logged-out", "logged-in"); // Ensure correct header style if using classes
     // If logged in and on a public-only page, redirect to dashboard
     if (publicOnlyPages.includes(currentPage)) {
-      console.log("User logged in, redirecting from public page to dashboard.");
+     // console.log("User logged in, redirecting from public page to dashboard.");
       window.location.href = "dashboard.html";
       return; // Prevent further execution on this page load
     }
@@ -90,9 +90,9 @@ function handleAuthState() {
     if (header) header.classList.replace("logged-in", "logged-out");
     // If not logged in and on a protected page, redirect to login
     if (protectedPages.includes(currentPage)) {
-      console.log(
-        "User not logged in, redirecting from protected page to login."
-      );
+    //   console.log(
+    //     "User not logged in, redirecting from protected page to login."
+    //   );
       window.location.href = "login.html";
       return; // Prevent further execution
     }
@@ -102,7 +102,7 @@ function handleAuthState() {
   // Special case for index.html: redirect if logged in
   if (currentPage === "index.html" || currentPage === "") {
     if (loggedIn) {
-      console.log("User logged in, redirecting from index to dashboard.");
+    //  console.log("User logged in, redirecting from index to dashboard.");
       window.location.href = "dashboard.html";
     }
   }

@@ -469,7 +469,7 @@ async function loadProfileView() {
 function renderProfileData(profile, isOwnProfile, loggedInUserId) {
   // Basic check for essential data
   if (!profile || !profile.user) {
-    console.error("Invalid profile data received for rendering:", profile);
+    // console.error("Invalid profile data received for rendering:", profile);
     setTextContent(
       "error-profile-message",
       "Failed to render profile: Invalid data."
