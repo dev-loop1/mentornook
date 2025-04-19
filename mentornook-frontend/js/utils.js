@@ -1,72 +1,80 @@
 /**
  * utils.js
- * Contains utility functions, authentication helpers, validation, DOM helpers,
- * and the main API communication function (WorkspaceApi).
+ * Contains utility functions shared across the application:
+ * - DOM manipulation helpers (errors)
+ * - Input validation
+ * - Authentication helpers (localStorage)
+ * - URL parsing
+ * - CSRF token retrieval
+ * - Main API communication function (WorkspaceApi)
+ * - Tag input component initialization
  */
 
 // --- Constants ---
-// TODO: Replace with your actual backend API URL. Add '/api' or appropriate prefix.
-const API_BASE_URL = "http://127.0.0.1:8000/api"; // Example for local Django dev server
+// TODO: Update this URL for staging/production environments, potentially using environment variables.
+const API_BASE_URL = 'http://127.0.0.1:8000/api'; // Base URL for backend API
 
 // --- DOM Helpers ---
 
 /**
- * Displays an error message for a specific form field.
- * @param {string} elementId - The ID of the error message container element.
- * @param {string} message - The error message to display.
+ * Displays an error message associated with a specific form field.
+ * @param {string} elementId - ID of the error message container.
+ * @param {string} message - Error message text.
  */
 function showError(elementId, message) {
   const errorElement = document.getElementById(elementId);
   if (errorElement) {
     errorElement.textContent = message;
-    errorElement.style.display = "block"; // Make sure it's visible
+    errorElement.style.display = 'block';
   } else {
+    // Log a warning if the target error element isn't found in the DOM
     console.warn(`Error element not found: ${elementId}`);
   }
 }
 
 /**
  * Clears the error message for a specific form field.
- * @param {string} elementId - The ID of the error message container element.
+ * @param {string} elementId - ID of the error message container.
  */
 function clearError(elementId) {
   const errorElement = document.getElementById(elementId);
   if (errorElement) {
-    errorElement.textContent = "";
-    errorElement.style.display = "none"; // Hide space if needed
+    errorElement.textContent = '';
+    errorElement.style.display = 'none';
   }
 }
 
 /**
- * Clears all error messages within a given form element.
- * @param {HTMLFormElement} formElement - The form element containing error messages.
+ * Clears all validation error messages within a given form.
+ * @param {HTMLFormElement} formElement - The form element.
  */
 function clearAllErrors(formElement) {
   if (!formElement) return;
-  const errorElements = formElement.querySelectorAll(
-    ".error-message, .form-error"
-  );
+  // Select elements typically used for displaying errors
+  const errorElements = formElement.querySelectorAll('.error-message, .form-error');
   errorElements.forEach((el) => {
-    el.textContent = "";
-    el.style.display = "none";
-    if (el.classList.contains("form-error")) {
-      el.classList.remove("visible");
+    el.textContent = '';
+    el.style.display = 'none';
+    // Reset visibility for general form error containers
+    if (el.classList.contains('form-error')) {
+      el.classList.remove('visible');
     }
   });
 }
 
 /**
- * Displays a general form error message.
- * @param {string} elementId - The ID of the general error container (e.g., 'login-general-error').
- * @param {string} message - The message to display.
+ * Displays a general error message for a form (not tied to a specific field).
+ * @param {string} elementId - ID of the general error container.
+ * @param {string} message - Error message text.
  */
 function showGeneralError(elementId, message) {
   const errorElement = document.getElementById(elementId);
   if (errorElement) {
     errorElement.textContent = message;
-    errorElement.style.display = "block";
-    errorElement.classList.add("visible");
+    errorElement.style.display = 'block';
+    errorElement.classList.add('visible'); // Ensure visibility class is added
   } else {
+    // Log warning if the general error display element is missing
     console.warn(`General error element not found: ${elementId}`);
   }
 }
@@ -74,73 +82,79 @@ function showGeneralError(elementId, message) {
 // --- Validation Helpers ---
 
 /**
- * Validates an email address format.
- * @param {string} email - The email address to validate.
- * @returns {boolean} True if the email format is valid, false otherwise.
+ * Validates email format using a regular expression.
+ * @param {string} email - Email string to validate.
+ * @returns {boolean} True if format is valid.
  */
 function validateEmail(email) {
+  // Basic email format regex
   const re = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
   return re.test(String(email).toLowerCase());
 }
 
 /**
- * Validates password length (basic example).
- * @param {string} password - The password to validate.
- * @param {number} minLength - Minimum required length.
- * @returns {boolean} True if the password meets the minimum length requirement.
+ * Validates password minimum length.
+ * @param {string} password - Password string to validate.
+ * @param {number} [minLength=8] - Minimum required length.
+ * @returns {boolean} True if password meets minimum length.
  */
 function validatePassword(password, minLength = 8) {
   return password && password.length >= minLength;
 }
 
 /**
- * Checks if a value is empty or whitespace.
- * @param {string} value - The value to check.
- * @returns {boolean} True if the value is empty, false otherwise.
+ * Checks if a string value is null, undefined, or only whitespace.
+ * @param {string} value - The string value to check.
+ * @returns {boolean} True if the value is considered empty.
  */
 function isEmpty(value) {
-  return !value || value.trim() === "";
+  return !value || value.trim() === '';
 }
 
 // --- Authentication Helpers (using localStorage) ---
 
 /**
- * Saves the authentication token and basic user info to localStorage.
- * @param {string} token - The authentication token.
- * @param {object} user - Basic user object (e.g., { id, name, username, email }).
+ * Saves authentication token and user info object to localStorage.
+ * @param {string} token - Authentication token from API.
+ * @param {object} user - User info object from API.
  */
 function saveAuthInfo(token, user) {
-  if (typeof localStorage !== "undefined") {
-    localStorage.setItem("authToken", token);
-    localStorage.setItem("userInfo", JSON.stringify(user));
+  // Check if localStorage is available
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('authToken', token);
+    // Store user object as a JSON string
+    localStorage.setItem('userInfo', JSON.stringify(user));
   } else {
-    console.error("localStorage is not available.");
+    // Log error if localStorage cannot be used
+    console.error('localStorage is not available. Cannot save authentication info.');
   }
 }
 
 /**
  * Retrieves the authentication token from localStorage.
- * @returns {string|null} The token or null if not found.
+ * @returns {string|null} The token, or null if not found or localStorage unavailable.
  */
 function getAuthToken() {
-  if (typeof localStorage !== "undefined") {
-    return localStorage.getItem("authToken");
+  if (typeof localStorage !== 'undefined') {
+    return localStorage.getItem('authToken');
   }
   return null;
 }
 
 /**
- * Retrieves the user info object from localStorage.
- * @returns {object|null} The user object or null if not found/invalid.
+ * Retrieves and parses the user info object from localStorage.
+ * @returns {object|null} The user object, or null if not found, invalid, or localStorage unavailable.
  */
 function getUserInfo() {
-  if (typeof localStorage !== "undefined") {
-    const userInfo = localStorage.getItem("userInfo");
+  if (typeof localStorage !== 'undefined') {
+    const userInfo = localStorage.getItem('userInfo');
     if (userInfo) {
       try {
+        // Attempt to parse the stored JSON string
         return JSON.parse(userInfo);
       } catch (e) {
-        console.error("Error parsing user info from localStorage:", e);
+        // Log error if parsing fails (e.g., corrupted data)
+        console.error('Error parsing user info from localStorage:', e);
         return null;
       }
     }
@@ -149,39 +163,42 @@ function getUserInfo() {
 }
 
 /**
- * Clears authentication token and user info from localStorage.
+ * Removes authentication token and user info from localStorage.
  */
 function clearAuthInfo() {
-  if (typeof localStorage !== "undefined") {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userInfo");
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userInfo');
   }
 }
 
 /**
- * Checks if a user is currently authenticated based on token presence.
- * @returns {boolean} True if an auth token exists.
+ * Checks if a user is currently considered authenticated (based on token presence).
+ * @returns {boolean} True if an auth token exists in localStorage.
  */
 function isAuthenticated() {
-  return !!getAuthToken();
+  return !!getAuthToken(); // Returns true if token is not null/empty, false otherwise
 }
 
 // --- URL Helpers ---
 
 /**
- * Parses URL query parameters into an object.
+ * Parses URL query parameters from the current window location.
  * @returns {object} An object containing key-value pairs of query parameters.
  */
 function getUrlParams() {
   const params = {};
+  // Get query string part of URL, remove leading '?'
   const queryString = window.location.search.substring(1);
-  const regex = /([^&=]+)=([^&]*)/g;
-  let m;
-  while ((m = regex.exec(queryString)) !== null) {
-    // Corrected loop condition
-    params[decodeURIComponent(m[1])] = decodeURIComponent(
-      m[2].replace(/\+/g, " ")
-    ); // Handle '+' encoding for spaces
+  // Regex to find key=value pairs
+  const regex = /([^&=]+)=?([^&]*)/g; // Made value optional with =?
+  let match;
+  // Loop through all matches
+  while ((match = regex.exec(queryString)) !== null) {
+    // Decode key and value, replace '+' with space for values
+    const key = decodeURIComponent(match[1]);
+    const value = decodeURIComponent(match[2].replace(/\+/g, ' '));
+    params[key] = value;
   }
   return params;
 }
@@ -190,85 +207,70 @@ function getUrlParams() {
 
 /**
  * Retrieves the CSRF token value from the 'csrftoken' cookie set by Django.
+ * Required for non-GET requests to Django backend.
  * @returns {string|null} The CSRF token value or null if not found.
  */
 function getCsrfToken() {
   let csrfToken = null;
-  if (document.cookie && document.cookie !== "") {
-    const cookies = document.cookie.split(";");
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
     for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      // Does this cookie string begin with the name we want?
-      if (cookie.startsWith("csrftoken=")) {
-        csrfToken = decodeURIComponent(cookie.substring("csrftoken=".length));
-        break;
+      let cookie = cookies[i].trim();
+      // Does this cookie string begin with the name 'csrftoken='?
+      if (cookie.startsWith('csrftoken=')) {
+        csrfToken = decodeURIComponent(cookie.substring('csrftoken='.length));
+        break; // Found the cookie, no need to check further
       }
     }
   }
-  // console.log("CSRF Token found:", csrfToken); // For debugging
+  // Debug log removed: // console.log("CSRF Token found:", csrfToken);
   return csrfToken;
 }
 
-// --- *** Backend API Communication Function *** ---
+// --- Backend API Communication Function ---
 
 /**
- * Handles communication with the backend API using fetch.
+ * Central function for making asynchronous requests to the backend API using fetch.
+ * Handles headers (Auth, CSRF, Content-Type), request body types (JSON, FormData),
+ * response parsing, and basic error handling.
  * @param {string} endpoint - The API endpoint path (e.g., '/login/', '/users/'). MUST start with '/'.
  * @param {string} [method='GET'] - HTTP method (GET, POST, PUT, DELETE, PATCH).
- * @param {object|FormData|null} [data=null] - Data payload for POST/PUT/PATCH requests. Can be an object or FormData.
- * @param {boolean} [requiresAuth=true] - Whether the request requires an Authorization token.
+ * @param {object|FormData|null} [data=null] - Data payload for POST/PUT/PATCH requests.
+ * @param {boolean} [requiresAuth=true] - Whether to include the Authorization token header.
  * @returns {Promise<object>} A promise resolving with { success: boolean, data?: any, error?: string, status?: number }.
  */
-async function WorkspaceApi(
-  endpoint,
-  method = "GET",
-  data = null,
-  requiresAuth = true
-) {
-  const upperMethod = method.toUpperCase(); // Ensure method is uppercase
+async function WorkspaceApi(endpoint, method = 'GET', data = null, requiresAuth = true) {
+  const upperMethod = method.toUpperCase();
 
-  // Input validation
-  if (!endpoint || !endpoint.startsWith("/")) {
-    console.error(
-      "WorkspaceApi Error: Endpoint must be provided and start with '/'."
-    );
-    return { success: false, error: "Invalid API endpoint.", status: null };
+  // Validate endpoint format
+  if (!endpoint || !endpoint.startsWith('/')) {
+    console.error("WorkspaceApi Error: Endpoint must be provided and start with '/'.");
+    return { success: false, error: 'Invalid API endpoint provided.', status: null };
   }
 
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${API_BASE_URL}${endpoint}`; // Construct full URL
   const headers = {
-    Accept: "application/json", // We generally expect JSON back
+    'Accept': 'application/json', // Specify we prefer JSON responses
   };
-  const token = getAuthToken();
+  const token = getAuthToken(); // Get auth token if available
 
-  // Set Authorization header if required
+  // Add Authorization header if needed and available
   if (requiresAuth) {
     if (!token) {
-      console.error(
-        "WorkspaceApi Error: Authentication token missing for protected route:",
-        endpoint
-      );
-      // Optionally trigger redirect to login page here if appropriate globally
-      // window.location.href = 'login.html';
-      return {
-        success: false,
-        error: "Authentication required. Please log in.",
-        status: 401,
-      };
+      console.error('WorkspaceApi Error: Auth token missing for protected route:', endpoint);
+      return { success: false, error: 'Authentication required. Please log in.', status: 401 };
     }
-    // Ensure this matches your Django Authentication scheme (TokenAuthentication uses 'Token')
-    headers["Authorization"] = `Token ${token}`;
+    headers['Authorization'] = `Token ${token}`; // Assumes DRF TokenAuthentication format
   }
 
-  // Set CSRF token for state-changing methods
-  if (!["GET", "HEAD", "OPTIONS", "TRACE"].includes(upperMethod)) {
+  // Add CSRF token header for methods that modify state
+  if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(upperMethod)) {
     const csrfToken = getCsrfToken();
     if (csrfToken) {
-      headers["X-CSRFToken"] = csrfToken;
+      headers['X-CSRFToken'] = csrfToken;
     } else {
-      console.warn(
-        `WorkspaceApi Warning: CSRF token not found for ${upperMethod} request to ${endpoint}. Request might fail.`
-      );
+      // Log warning if CSRF token is missing for relevant methods
+      console.warn(`WorkspaceApi Warning: CSRF token not found for ${upperMethod} request to ${endpoint}. Request might fail.`);
     }
   }
 
@@ -278,231 +280,190 @@ async function WorkspaceApi(
     headers: headers,
   };
 
-  // Handle request body
+  // Prepare request body if data is provided
   if (data) {
     if (data instanceof FormData) {
-      // Don't set Content-Type; browser does it for FormData
+      // For FormData, let the browser set the Content-Type header with boundary
       config.body = data;
     } else {
-      // Assume JSON for other objects
-      headers["Content-Type"] = "application/json";
+      // For other data, assume JSON
+      headers['Content-Type'] = 'application/json';
       config.body = JSON.stringify(data);
     }
   }
 
-  // Perform the fetch call
+  // Perform the API call
   try {
     const response = await fetch(url, config);
 
-    // Handle empty response body (e.g., 204 No Content)
-    if (
-      response.status === 204 ||
-      response.headers.get("content-length") === "0"
-    ) {
+    // Handle successful responses with no content body (e.g., 204 after DELETE)
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
       return { success: true, status: response.status, data: null };
     }
 
-    // Attempt to parse JSON response body
+    // Attempt to parse response body as JSON
     let responseData;
     try {
       responseData = await response.json();
     } catch (jsonError) {
-      // Handle cases where response is not JSON but request didn't fail (e.g., unexpected HTML error page)
-      console.error(
-        `WorkspaceApi Error: Failed to parse JSON response from ${endpoint} (Status: ${response.status}). Response Text:`,
-        await response.text().catch(() => "Could not read response text.")
-      );
-      return {
-        success: false,
-        error: `Invalid response format from server (Status: ${response.status}).`,
-        status: response.status,
-      };
+      // Handle cases where response isn't valid JSON (e.g., HTML error page)
+      const responseText = await response.text().catch(() => 'Could not read response text.');
+      console.error(`WorkspaceApi Error: Failed to parse JSON response from ${endpoint} (Status: ${response.status}). Response Text:`, responseText);
+      return { success: false, error: `Invalid response format from server (Status: ${response.status}).`, status: response.status };
     }
 
-    // Check if the HTTP status code indicates success (2xx range)
+    // Check if the HTTP status code indicates an error (non-2xx)
     if (!response.ok) {
-      console.error(
-        `WorkspaceApi Error: ${response.status} ${response.statusText} for ${endpoint}`,
-        responseData
-      );
-      // Extract detailed error message from backend response if possible
-      let errorMessage =
-        responseData.detail || // Common DRF field
-        (Array.isArray(responseData) ? responseData.join(", ") : null) || // Handle list errors
-        (typeof responseData === "object"
-          ? JSON.stringify(responseData)
-          : `Request failed with status ${response.status}.`); // Fallback
-      return {
-        success: false,
-        error: errorMessage,
-        status: response.status,
-        data: responseData,
-      };
+      console.error(`WorkspaceApi Error: ${response.status} ${response.statusText} for ${endpoint}`, responseData);
+      // Extract detailed error message from backend if possible (common DRF patterns)
+      let errorMessage = responseData.detail ||
+                         (Array.isArray(responseData) ? responseData.join(', ') : null) ||
+                         (typeof responseData === 'object' ? JSON.stringify(responseData) : `Request failed with status ${response.status}.`);
+      return { success: false, error: errorMessage, status: response.status, data: responseData };
     }
 
     // Successful response with JSON data
     return { success: true, data: responseData, status: response.status };
+
   } catch (error) {
-    // Handle network errors, CORS issues, etc.
+    // Handle network errors (fetch failure, CORS issues, etc.)
     console.error(`WorkspaceApi Network/Fetch Error for ${endpoint}:`, error);
-    // Provide a user-friendly message for network issues
-    return {
-      success: false,
-      error:
-        "Failed to connect to the server. Please check your network connection.",
-      status: null,
-    };
+    return { success: false, error: 'Failed to connect to the server. Please check your network connection.', status: null };
   }
-}
+} // End WorkspaceApi
+
 
 // --- Tag Input Logic ---
 
 /**
- * Initializes a tag input component.
- * @param {string} containerId - ID of the main container div.
- * @param {string} inputId - ID of the visible text input element.
- * @param {string} tagsDisplayId - ID of the div where tags will be displayed.
- * @param {string} hiddenInputId - ID of the hidden input storing the comma-separated value.
+ * Initializes a tag input component, handling tag creation, deletion,
+ * and synchronization with a hidden input field.
+ * @param {string} containerId - ID of the main container div for the tag input.
+ * @param {string} inputId - ID of the visible text input element for typing tags.
+ * @param {string} tagsDisplayId - ID of the div where visual tags will be displayed.
+ * @param {string} hiddenInputId - ID of the hidden input storing the comma-separated tag values.
  */
-function initializeTagInput(
-  containerId,
-  inputId,
-  tagsDisplayId,
-  hiddenInputId
-) {
+function initializeTagInput(containerId, inputId, tagsDisplayId, hiddenInputId) {
+  // Get references to the required DOM elements
   const container = document.getElementById(containerId);
   const input = document.getElementById(inputId);
   const tagsDisplay = document.getElementById(tagsDisplayId);
   const hiddenInput = document.getElementById(hiddenInputId);
 
+  // Exit if any element is missing to prevent errors
   if (!container || !input || !tagsDisplay || !hiddenInput) {
-    console.error(
-      "Tag input initialization failed: One or more elements not found.",
-      { containerId, inputId, tagsDisplayId, hiddenInputId }
-    );
+    console.error("Tag input initialization failed: One or more elements not found.", { containerId, inputId, tagsDisplayId, hiddenInputId });
     return;
   }
 
-  let tags = []; // Internal state for tags
+  let tags = []; // Array to hold the tag strings internally
 
-  // Function to update the hidden input value from the tags array
+  // Updates the hidden input field with the current tags array (comma-separated)
   function updateHiddenInput() {
-    hiddenInput.value = tags.join(",");
-    // Optionally trigger change event for validation libraries etc.
-    hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
+    hiddenInput.value = tags.join(',');
+    hiddenInput.dispatchEvent(new Event('change', { bubbles: true })); // Trigger change event
 
-    // Clear any specific error related to this field if tags now exist
+    // Clear associated error message if tags are now present
     if (tags.length > 0) {
-      // Try to derive error element ID (assumes pattern like 'profile-skills-error' or 'filter-skills-error')
-      const baseId = hiddenInputId.replace(/^profile-|^filter-/, ""); // Remove prefixes
+      const baseId = hiddenInputId.replace(/^profile-|^filter-/, '');
       const errorElementId = `${baseId}-error`;
-      clearError(errorElementId);
+      clearError(errorElementId); // Assumes clearError is defined globally
     }
   }
 
-  // Function to create and add a tag visually and to the array
+  // Creates and adds a new tag element visually and updates the state
   function addTag(text) {
-    const tagText = text.trim().replace(/,/g, ""); // Remove commas from tag text itself
+    const tagText = text.trim().replace(/,/g, ''); // Clean tag text (remove commas)
+    // Prevent empty or duplicate tags
     if (tagText.length < 1 || tags.includes(tagText)) {
-      input.value = ""; // Clear input even if tag not added
-      return; // Prevent empty or duplicate tags
+      input.value = ''; // Clear input even if tag wasn't added
+      return;
     }
 
-    tags.push(tagText);
+    tags.push(tagText); // Add to internal array
 
-    const tagElement = document.createElement("span");
-    tagElement.className = "tag-item";
+    // Create visual elements for the tag
+    const tagElement = document.createElement('span');
+    tagElement.className = 'tag-item';
     tagElement.textContent = tagText;
 
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button"; // Important to prevent form submission
-    removeBtn.className = "tag-remove-btn";
-    removeBtn.textContent = "×"; // Multiplication sign visually similar to x
-    removeBtn.setAttribute("aria-label", `Remove ${tagText}`);
-    removeBtn.addEventListener("click", (e) => {
-      e.stopPropagation(); // Prevent container click listener from firing
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'tag-remove-btn';
+    removeBtn.textContent = '×'; // Visual 'x'
+    removeBtn.setAttribute('aria-label', `Remove ${tagText}`);
+    // Add event listener to remove the tag when 'x' is clicked
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent container click listener
       removeTag(tagText, tagElement);
     });
 
     tagElement.appendChild(removeBtn);
-    tagsDisplay.appendChild(tagElement); // Add visual tag
-    updateHiddenInput(); // Update stored value
-    input.value = ""; // Clear input field after adding tag
+    tagsDisplay.appendChild(tagElement); // Add tag to the display area
+    updateHiddenInput(); // Update the hidden input value
+    input.value = ''; // Clear the text input field
   }
 
-  // Function to remove a tag visually and from the array
+  // Removes a tag visually and from the internal state
   function removeTag(tagText, tagElement) {
-    tags = tags.filter((t) => t !== tagText); // Remove from array
+    tags = tags.filter(t => t !== tagText); // Remove from array
     tagElement.remove(); // Remove from DOM
-    updateHiddenInput(); // Update stored value
-    input.focus(); // Return focus to input after removing tag
+    updateHiddenInput(); // Update hidden input
+    input.focus(); // Return focus to the input field
   }
 
-  // Function to load tags from initial value (e.g., when editing profile)
+  // Loads initial tags based on the hidden input's value (e.g., when editing)
   function loadInitialTags() {
-    tags = hiddenInput.value
-      ? hiddenInput.value
-          .split(",")
-          .map((t) => t.trim())
-          .filter((t) => t.length > 0)
-      : [];
-    tagsDisplay.innerHTML = ""; // Clear existing visual tags first
-    tags.forEach((tagText) => {
-      // Re-create visual elements for existing tags
-      const tagElement = document.createElement("span");
-      tagElement.className = "tag-item";
+    // Get comma-separated string, split into array, trim items, filter empty ones
+    tags = hiddenInput.value ? hiddenInput.value.split(',').map(t => t.trim()).filter(t => t.length > 0) : [];
+    tagsDisplay.innerHTML = ''; // Clear any existing visual tags
+    // Recreate visual tags for each item in the loaded array
+    tags.forEach(tagText => {
+      const tagElement = document.createElement('span');
+      tagElement.className = 'tag-item';
       tagElement.textContent = tagText;
-      const removeBtn = document.createElement("button");
-      removeBtn.type = "button";
-      removeBtn.className = "tag-remove-btn";
-      removeBtn.textContent = "×";
-      removeBtn.setAttribute("aria-label", `Remove ${tagText}`);
-      removeBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        removeTag(tagText, tagElement);
-      });
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'tag-remove-btn';
+      removeBtn.textContent = '×';
+      removeBtn.setAttribute('aria-label', `Remove ${tagText}`);
+      removeBtn.addEventListener('click', (e) => { e.stopPropagation(); removeTag(tagText, tagElement); });
       tagElement.appendChild(removeBtn);
       tagsDisplay.appendChild(tagElement);
     });
-    // Ensure hidden input matches initial tags exactly (handles empty case)
-    updateHiddenInput();
+    updateHiddenInput(); // Ensure hidden input matches exactly after load
   }
 
-  // --- Event Listeners ---
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "," || e.key === "Enter") {
-      e.preventDefault(); // Prevent comma typing or form submission
-      if (input.value.trim()) {
-        // Only add tag if there's text
-        addTag(input.value);
-      }
-    } else if (e.key === "Backspace" && input.value === "" && tags.length > 0) {
-      // Remove last tag on backspace if input is empty
-      const lastTagElement = tagsDisplay.querySelector(".tag-item:last-child");
+  // --- Event Listeners for Tag Input ---
+  // Handle key presses in the input field
+  input.addEventListener('keydown', (e) => {
+    // Add tag on comma or Enter key press
+    if (e.key === ',' || e.key === 'Enter') {
+      e.preventDefault(); // Prevent default action (typing comma, submitting form)
+      if (input.value.trim()) { addTag(input.value); } // Add tag if input has text
+    } else if (e.key === 'Backspace' && input.value === '' && tags.length > 0) {
+      // Remove last tag if backspace is pressed in empty input
+      const lastTagElement = tagsDisplay.querySelector('.tag-item:last-child');
       if (lastTagElement) {
-        const lastTagText = tags[tags.length - 1]; // Get text before removing
+        const lastTagText = tags[tags.length - 1];
         removeTag(lastTagText, lastTagElement);
       }
     }
   });
 
-  // Add tag when input loses focus, if there's text entered
-  input.addEventListener("blur", () => {
-    if (input.value.trim()) {
-      addTag(input.value);
-    }
+  // Add tag if user types something and then clicks away (blur)
+  input.addEventListener('blur', () => {
+    if (input.value.trim()) { addTag(input.value); }
   });
 
-  // Make the container focus the input when clicked (improves usability)
-  container.addEventListener("click", () => {
+  // Focus the text input when the container background is clicked
+  container.addEventListener('click', () => {
     input.focus();
   });
 
-  // --- Initial Load ---
-  // Load tags based on any pre-existing value in the hidden input
-  loadInitialTags();
-
-  // --- Expose Refresh Function ---
-  // Attach function to container element so it can be called externally (e.g., after loading profile data)
+  // --- Initial Load & Setup ---
+  loadInitialTags(); // Load any existing tags from hidden input on init
+  // Make the refresh function available externally on the container element
   container.refreshTags = loadInitialTags;
-}
+
+} // End initializeTagInput

@@ -1,227 +1,309 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Get DOM Elements ---
-    const filterForm = document.getElementById('filter-form');
-    const userListContainer = document.getElementById('user-list-container');
-    const loadingMessage = document.getElementById('loading-message');
-    const noResultsMessage = document.getElementById('no-results-message');
-    const paginationControls = document.getElementById('pagination-controls');
-    const searchForm = document.getElementById('search-form');
-    const searchInput = document.getElementById('search-input');
-    // Optional Clear Button: const clearSearchButton = document.getElementById('clear-search-button');
+/**
+ * discovery.js
+ * Handles the user discovery page (dashboard.html): fetching, filtering,
+ * searching, paginating, and displaying user profiles.
+ * Assumes functions from utils.js (like getAuthToken, WorkspaceApi, initializeTagInput) are available.
+ */
 
-    // --- State Variables ---
-    let currentFilters = {
-        role: '',
-        skills: '',
-        interests: '',
-        search: ''
-    };
-    let currentPage = 1;
-    const PAGE_SIZE = 10; // Match DRF Page Size setting
+document.addEventListener("DOMContentLoaded", () => {
+  // --- Get DOM Elements ---
+  const filterForm = document.getElementById("filter-form");
+  const userListContainer = document.getElementById("user-list-container");
+  const loadingMessage = document.getElementById("loading-message");
+  const noResultsMessage = document.getElementById("no-results-message");
+  const paginationControls = document.getElementById("pagination-controls");
+  const searchForm = document.getElementById("search-form");
+  const searchInput = document.getElementById("search-input");
+  // Optional: const clearSearchButton = document.getElementById('clear-search-button');
 
-    // --- Initialize Tag Inputs for Filters ---
-    const skillsFilterContainer = document.getElementById('filter-skills-container');
-    const interestsFilterContainer = document.getElementById('filter-interests-container');
+  // --- State Variables ---
+  // Stores the currently active filters and search term
+  let currentFilters = {
+    role: "",
+    skills: "",
+    interests: "",
+    search: "",
+  };
+  // Stores the current page number for pagination
+  let currentPage = 1;
+  // Page size should match backend pagination setting for accurate calculation
+  const PAGE_SIZE = 10; // Match DRF Page Size setting in settings.py
 
-    if (skillsFilterContainer) {
-        initializeTagInput('filter-skills-container', 'filter-skills-input', 'filter-skills-tags', 'filter-skills');
-    } else {
-        console.warn("Skills filter tag input container not found.");
-    }
-    if (interestsFilterContainer) {
-        initializeTagInput('filter-interests-container', 'filter-interests-input', 'filter-interests-tags', 'filter-interests');
-    } else {
-        console.warn("Interests filter tag input container not found.");
-    }
-    // --- End Initialization ---
+  // --- Initialize Tag Inputs for Filters ---
+  const skillsFilterContainer = document.getElementById(
+    "filter-skills-container"
+  );
+  const interestsFilterContainer = document.getElementById(
+    "filter-interests-container"
+  );
 
+  if (skillsFilterContainer) {
+    // Initialize the tag input component for skills filter
+    initializeTagInput(
+      "filter-skills-container",
+      "filter-skills-input",
+      "filter-skills-tags",
+      "filter-skills"
+    );
+  } else {
+    // Log warning if element is missing - helps diagnose HTML issues
+    console.warn("Skills filter tag input container not found.");
+  }
+  if (interestsFilterContainer) {
+    // Initialize the tag input component for interests filter
+    initializeTagInput(
+      "filter-interests-container",
+      "filter-interests-input",
+      "filter-interests-tags",
+      "filter-interests"
+    );
+  } else {
+    console.warn("Interests filter tag input container not found.");
+  }
+  // --- End Initialization ---
 
-    // --- Initial Data Load ---
-    fetchAndDisplayUsers(currentFilters, currentPage);
+  // --- Initial Data Load ---
+  // Fetch and display users when the page first loads
+  fetchAndDisplayUsers(currentFilters, currentPage);
 
+  // --- Event Listener for Search Form ---
+  if (searchForm) {
+    searchForm.addEventListener("submit", (e) => {
+      e.preventDefault(); // Prevent default form submission
+      // Update state with the new search term
+      currentFilters.search = searchInput.value.trim();
+      currentPage = 1; // Reset to page 1 for new search
+      // Fetch users with the updated search term (and existing filters)
+      fetchAndDisplayUsers(currentFilters, currentPage);
+    });
+  } else {
+    console.warn("Search form not found."); // Log warning if element is missing
+  }
 
-    // --- Event Listener for Search Form ---
-    if (searchForm) {
-        searchForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            currentFilters.search = searchInput.value.trim();
-            currentPage = 1; // Reset page
-            fetchAndDisplayUsers(currentFilters, currentPage);
-            // Optional: Manage clear button visibility based on searchInput.value
-        });
-    } else {
-        console.warn("Search form not found.");
-    }
+  // Optional: Add handler for a clear search button if implemented
+  // if (clearSearchButton) { ... }
 
-    // Optional: Clear Search Button Handler
-    // if (clearSearchButton) { ... }
+  // --- Event Listener for Filter Form ---
+  if (filterForm) {
+    filterForm.addEventListener("submit", (e) => {
+      e.preventDefault(); // Prevent default form submission
+      // Update filter state from form inputs (including hidden tag inputs)
+      currentFilters.role = document.getElementById("filter-role")?.value || "";
+      currentFilters.skills =
+        document.getElementById("filter-skills")?.value || "";
+      currentFilters.interests =
+        document.getElementById("filter-interests")?.value || "";
+      // Ensure the current search term is preserved when applying filters
+      currentFilters.search = searchInput?.value.trim() || "";
+      currentPage = 1; // Reset to page 1 when filters change
+      // Fetch users with the updated filters (and existing search term)
+      fetchAndDisplayUsers(currentFilters, currentPage);
+    });
+  } else {
+    console.warn("Filter form not found."); // Log warning if element is missing
+  }
 
-
-    // --- Event Listener for Filter Form ---
-    if (filterForm) {
-        filterForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            // Update filters state
-            currentFilters.role = document.getElementById('filter-role')?.value || '';
-            currentFilters.skills = document.getElementById('filter-skills')?.value || ''; // From hidden input
-            currentFilters.interests = document.getElementById('filter-interests')?.value || ''; // From hidden input
-            // Keep existing search term when applying filters
-            currentFilters.search = searchInput?.value.trim() || '';
-            currentPage = 1; // Reset page
-            fetchAndDisplayUsers(currentFilters, currentPage);
-        });
-    } else {
-         console.warn("Filter form not found.");
-    }
-
-
-    // --- Event Listener for Pagination ---
-    if (paginationControls) {
-        paginationControls.addEventListener('click', (e) => {
-            if (e.target.tagName === 'BUTTON' && e.target.dataset.page) {
-                const page = parseInt(e.target.dataset.page, 10);
-                if (!isNaN(page)) {
-                    currentPage = page;
-                    // Fetch data for the new page with current filters
-                    fetchAndDisplayUsers(currentFilters, currentPage);
-                }
-            }
-        });
-    } else {
-        console.warn("Pagination controls container not found.");
-    }
-
-
-    // --- Core Function to Fetch and Display Users ---
-    async function fetchAndDisplayUsers(filters = {}, page = 1) {
-        if (!userListContainer || !loadingMessage || !noResultsMessage) {
-             console.error("Cannot display users: Missing required list or message elements.");
-             return;
+  // --- Event Listener for Pagination ---
+  if (paginationControls) {
+    // Use event delegation to handle clicks on pagination buttons
+    paginationControls.addEventListener("click", (e) => {
+      // Check if a button with a 'data-page' attribute was clicked
+      if (e.target.tagName === "BUTTON" && e.target.dataset.page) {
+        const page = parseInt(e.target.dataset.page, 10);
+        if (!isNaN(page)) {
+          currentPage = page; // Update current page state
+          // Fetch users for the new page, keeping current filters/search active
+          fetchAndDisplayUsers(currentFilters, currentPage);
         }
+      }
+    });
+  } else {
+    console.warn("Pagination controls container not found."); // Log warning if element is missing
+  }
 
-        loadingMessage.style.display = 'block';
-        noResultsMessage.style.display = 'none';
-        userListContainer.innerHTML = ''; // Clear previous results
-        if (paginationControls) paginationControls.innerHTML = ''; // Clear pagination
+  /**
+   * Fetches user profiles from the backend based on current filters, search term,
+   * and page number, then renders the results.
+   * @param {object} filters - The current filter/search state object.
+   * @param {number} page - The page number to fetch.
+   */
+  async function fetchAndDisplayUsers(filters = {}, page = 1) {
+    // Ensure required DOM elements for display exist
+    if (!userListContainer || !loadingMessage || !noResultsMessage) {
+      console.error(
+        "Cannot display users: Missing required list or message elements."
+      );
+      return;
+    }
 
-        // --- Construct Query Parameters ---
-        const queryParams = new URLSearchParams();
-        // Add filters only if they have a value
-        if (filters.role) queryParams.append('role', filters.role);
-        if (filters.skills) queryParams.append('skills', filters.skills); // Backend view handles comma-separated string for skills filter
-        if (filters.interests) queryParams.append('interests', filters.interests); // Backend view handles comma-separated string for interests filter
-        if (filters.search) queryParams.append('search', filters.search); // DRF SearchFilter default param
-        if (page > 1) queryParams.append('page', page); // DRF PageNumberPagination default param
-        const queryString = queryParams.toString();
+    // Show loading state, hide previous results/messages
+    loadingMessage.style.display = "block";
+    noResultsMessage.style.display = "none";
+    userListContainer.innerHTML = "";
+    if (paginationControls) paginationControls.innerHTML = "";
 
-        // **FIXED:** Construct full endpoint URL with query string
-        const endpoint = queryString ? `/users/?${queryString}` : '/users/';
-        // --- End Query Parameter Construction ---
+    // --- Construct Query Parameters for API ---
+    const queryParams = new URLSearchParams();
+    // Append parameters only if they have a value
+    if (filters.role) queryParams.append("role", filters.role);
+    if (filters.skills) queryParams.append("skills", filters.skills);
+    if (filters.interests) queryParams.append("interests", filters.interests);
+    if (filters.search) queryParams.append("search", filters.search);
+    if (page > 1) queryParams.append("page", page);
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/users/?${queryString}` : "/users/"; // Append query string if present
+    // --- End Query Parameter Construction ---
 
-        try {
-            // **FIXED:** Pass null for data (GET request), add requiresAuth, use correct endpoint
-            // Set requiresAuth based on whether user list is public (false) or requires login (true)
-            const requiresAuth = true; // Or false if public listing is allowed
-            const response = await WorkspaceApi(endpoint, 'GET', null, requiresAuth);
+    try {
+      // Determine if authentication is needed to view the user list
+      const requiresAuth = true; // Set to false if list should be public
+      // Call the backend API
+      const response = await WorkspaceApi(endpoint, "GET", null, requiresAuth);
 
-            // **FIXED:** Check response.success and access DRF paginated data structure
-            if (response.success && response.data && Array.isArray(response.data.results)) {
-                if (response.data.results.length > 0) {
-                    response.data.results.forEach(userProfile => {
-                        // Ensure userProfile is valid before creating card
-                        if (userProfile && userProfile.user) {
-                             const userCard = createUserCard(userProfile);
-                             userListContainer.appendChild(userCard);
-                        } else {
-                             console.warn("Received invalid user profile data item:", userProfile);
-                        }
-                    });
-                    // **FIXED:** Calculate total pages from count and page size
-                    const totalPages = Math.ceil(response.data.count / PAGE_SIZE);
-                    renderPagination(totalPages, page); // Pass current page number
-                } else {
-                     noResultsMessage.style.display = 'block'; // Show no results message if results array is empty
-                }
+      // Process the response
+      if (
+        response.success &&
+        response.data &&
+        Array.isArray(response.data.results)
+      ) {
+        const userProfiles = response.data.results;
+        if (userProfiles.length > 0) {
+          // Render each user card
+          userProfiles.forEach((userProfile) => {
+            if (userProfile && userProfile.user) {
+              // Basic validation of received item
+              const userCard = createUserCard(userProfile);
+              userListContainer.appendChild(userCard);
             } else {
-                // Handle API error response
-                // **FIXED:** Use response.error
-                noResultsMessage.textContent = response.error || 'Failed to load users.';
-                noResultsMessage.style.display = 'block';
-                console.error("Error loading users:", response.error);
+              console.warn(
+                "Received invalid user profile data item:",
+                userProfile
+              ); // Keep useful warnings
             }
-        } catch (error) { // Catch network/fetch errors
-            console.error("Error fetching users:", error);
-            noResultsMessage.textContent = error.message || 'An unexpected error occurred while fetching users.';
-            noResultsMessage.style.display = 'block';
-        } finally {
-            loadingMessage.style.display = 'none';
+          });
+          // Render pagination controls based on total count and current page
+          const totalPages = Math.ceil(response.data.count / PAGE_SIZE);
+          renderPagination(totalPages, page);
+        } else {
+          // No users found matching criteria
+          noResultsMessage.style.display = "block";
         }
-    } // End fetchAndDisplayUsers
+      } else {
+        // API call failed or returned unexpected data
+        noResultsMessage.textContent =
+          response.error || "Failed to load users.";
+        noResultsMessage.style.display = "block";
+        console.error("Error loading users:", response.error); // Keep error logs
+      }
+    } catch (error) {
+      // Handle network errors or exceptions during the fetch process
+      console.error("Error fetching users:", error); // Keep error logs
+      noResultsMessage.textContent =
+        error.message || "An unexpected error occurred while fetching users.";
+      noResultsMessage.style.display = "block";
+    } finally {
+      // Always hide the loading message
+      loadingMessage.style.display = "none";
+    }
+  } // End fetchAndDisplayUsers
 
+  /**
+   * Creates the HTML structure for a single user profile card.
+   * @param {object} userProfile - Profile data object from the API response.
+   * @returns {HTMLElement} The created div element for the user card.
+   */
+  function createUserCard(userProfile) {
+    const card = document.createElement("div");
+    card.className = "user-card";
 
-    // --- Function to Create User Card HTML ---
-    function createUserCard(userProfile) {
-        const card = document.createElement('div');
-        card.className = 'user-card';
+    // Extract data safely, providing defaults
+    const profilePic =
+      userProfile.profile_picture_url ||
+      "assets/images/profile_avatar_default.png";
+    const name =
+      userProfile.name || userProfile.user?.username || "Unnamed User";
+    const role = userProfile.role || "";
+    const skillsList = userProfile.skills_list || [];
+    const skillsText =
+      skillsList.length > 0 ? skillsList.join(", ") : "No skills listed";
+    const interestsList = userProfile.interests_list || [];
+    const interestsText = interestsList.length > 0 ? interestsList.join(', ') : 'No interests listed';
+    const userId = userProfile.user?.id; // Use nested user ID
 
-        // **FIXED:** Use correct fields from ProfileSerializer data
-        const profilePic = userProfile.profile_picture_url || 'assets/images/profile_avatar_default.png';
-        const name = userProfile.name || userProfile.user?.username || 'Unnamed User'; // Use calculated name field
-        const role = userProfile.role || '';
-        // **FIXED:** Use skills_list array provided by serializer
-        const skillsList = userProfile.skills_list || [];
-        const skillsText = skillsList.length > 0 ? skillsList.join(', ') : 'No skills listed';
-        // **FIXED:** Use nested user ID for the link
-        const userId = userProfile.user?.id; // Get ID from nested user object
+    // Generate profile link only if userId is valid
+    const profileLink = userId
+      ? `<a href="user_profile.html?id=${userId}" class="btn btn-secondary btn-sm">View Profile</a>`
+      : "";
 
-        // Only create link if userId is valid
-        const profileLink = userId ? `<a href="user_profile.html?id=${userId}" class="btn btn-secondary btn-sm">View Profile</a>` : '';
-
-        card.innerHTML = `
+    // Construct card HTML
+    card.innerHTML = `
             <img src="${profilePic}" alt="${name}'s profile picture">
             <h3>${name}</h3>
-            ${role ? `<span class="user-role ${role}">${role}</span>` : ''}
+            ${role ? `<span class="user-role ${role}">${role}</span>` : ""}
             <p class="user-skills" title="${skillsText}">Skills: ${skillsText}</p>
+            <p class="user-interests" title="${interestsText}">Interests: ${interestsText}</p>
             ${profileLink}
         `;
-        return card;
-    } // End createUserCard
+    return card;
+  } // End createUserCard
 
-
-    // --- Function to Render Pagination Controls ---
-    // (Keep existing renderPagination function - it correctly uses totalPages and currentPage)
-    function renderPagination(totalPages, currentPage) {
-        if (!paginationControls || totalPages <= 1) {
-           if(paginationControls) paginationControls.innerHTML = ''; return;
-        }
-        paginationControls.innerHTML = ''; // Clear previous controls
-        const prevButton = document.createElement('button');
-        prevButton.textContent = '« Prev';
-        prevButton.dataset.page = currentPage - 1;
-        prevButton.disabled = currentPage === 1;
-        paginationControls.appendChild(prevButton);
-        const maxPagesToShow = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-        startPage = Math.max(1, endPage - maxPagesToShow + 1);
-        if (startPage > 1) {
-            const firstButton = document.createElement('button'); firstButton.textContent = '1'; firstButton.dataset.page = 1; paginationControls.appendChild(firstButton);
-            if (startPage > 2) { const ellipsis = document.createElement('span'); ellipsis.textContent = '...'; paginationControls.appendChild(ellipsis); }
-        }
-        for (let i = startPage; i <= endPage; i++) {
-           const pageButton = document.createElement('button'); pageButton.textContent = i; pageButton.dataset.page = i;
-           if (i === currentPage) { pageButton.disabled = true; pageButton.classList.add('current-page'); }
-           paginationControls.appendChild(pageButton);
-       }
-        if (endPage < totalPages) {
-             if (endPage < totalPages - 1) { const ellipsis = document.createElement('span'); ellipsis.textContent = '...'; paginationControls.appendChild(ellipsis); }
-             const lastButton = document.createElement('button'); lastButton.textContent = totalPages; lastButton.dataset.page = totalPages; paginationControls.appendChild(lastButton);
-        }
-       const nextButton = document.createElement('button');
-       nextButton.textContent = 'Next »';
-       nextButton.dataset.page = currentPage + 1;
-       nextButton.disabled = currentPage === totalPages;
-       paginationControls.appendChild(nextButton);
-   } // End renderPagination
-
+  /**
+   * Renders pagination controls based on total pages and current page.
+   * @param {number} totalPages - Total number of pages available.
+   * @param {number} currentPage - The currently displayed page number.
+   */
+  function renderPagination(totalPages, currentPage) {
+    // Standard pagination logic (no changes needed from previous version)
+    if (!paginationControls || totalPages <= 1) {
+      if (paginationControls) paginationControls.innerHTML = "";
+      return;
+    }
+    paginationControls.innerHTML = "";
+    const prevButton = document.createElement("button");
+    prevButton.textContent = "« Prev";
+    prevButton.dataset.page = currentPage - 1;
+    prevButton.disabled = currentPage === 1;
+    paginationControls.appendChild(prevButton);
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    if (startPage > 1) {
+      const firstButton = document.createElement("button");
+      firstButton.textContent = "1";
+      firstButton.dataset.page = 1;
+      paginationControls.appendChild(firstButton);
+      if (startPage > 2) {
+        const ellipsis = document.createElement("span");
+        ellipsis.textContent = "...";
+        paginationControls.appendChild(ellipsis);
+      }
+    }
+    for (let i = startPage; i <= endPage; i++) {
+      const pageButton = document.createElement("button");
+      pageButton.textContent = i;
+      pageButton.dataset.page = i;
+      if (i === currentPage) {
+        pageButton.disabled = true;
+        pageButton.classList.add("current-page");
+      }
+      paginationControls.appendChild(pageButton);
+    }
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        const ellipsis = document.createElement("span");
+        ellipsis.textContent = "...";
+        paginationControls.appendChild(ellipsis);
+      }
+      const lastButton = document.createElement("button");
+      lastButton.textContent = totalPages;
+      lastButton.dataset.page = totalPages;
+      paginationControls.appendChild(lastButton);
+    }
+    const nextButton = document.createElement("button");
+    nextButton.textContent = "Next »";
+    nextButton.dataset.page = currentPage + 1;
+    nextButton.disabled = currentPage === totalPages;
+    paginationControls.appendChild(nextButton);
+  } // End renderPagination
 }); // End DOMContentLoaded

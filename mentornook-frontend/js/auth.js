@@ -226,24 +226,28 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   } // End if(signupForm)
 
-  // --- Logout Handling ---
-  async function handleLogout() {
-    // console.log("Attempting logout..."); // DEBUG log removed
-    try {
-      const response = await WorkspaceApi("/logout/", "POST", null, true); // Requires auth
-      if (!response.success) {
-        // Log server-side logout failure, but proceed with client-side logout
-        console.warn(
-          "Server logout failed (token might be expired/invalid):",
-          response.error
-        ); // Keep useful warnings
-      }
-    } catch (error) {
-      console.error("Error during logout API call:", error); // Keep error logs
-    } finally {
-      // Always clear local storage and redirect regardless of API call outcome
-      clearAuthInfo();
-      window.location.href = "login.html";
+  // Note: The handleLogout function itself might live here, but the event listener
+  // triggering it is typically attached in main.js to the header button,
+  // as the header is present on multiple pages. If you need the function definition
+  // here for some reason, it can be included, but ensure it's called correctly elsewhere.
+
+  /*
+    // Example: Logout function definition (if needed in this file scope)
+    async function handleLogout() {
+        // console.log("Attempting logout..."); // DEBUG log removed
+        try {
+            const response = await WorkspaceApi('/logout/', 'POST', null, true); // Requires auth
+            if (!response.success) {
+                // Log server-side logout failure, but proceed with client-side logout
+                console.warn("Server logout failed (token might be expired/invalid):", response.error); // Keep useful warnings
+            }
+        } catch (error) {
+            console.error("Error during logout API call:", error); // Keep error logs
+        } finally {
+            // Always clear local storage and redirect regardless of API call outcome
+            clearAuthInfo();
+            window.location.href = 'login.html';
+        }
     }
-  }
+    */
 }); // End DOMContentLoaded
