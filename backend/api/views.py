@@ -1,4 +1,5 @@
-# api/views.py
+# backend/api/views.py
+
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.db.models import Q
@@ -6,283 +7,256 @@ from rest_framework import generics, views, status, permissions, filters
 from rest_framework.response import Response
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
-from rest_framework import permissions
-from .models import Profile # Or wherever your Profile model is defined
-from django.contrib.auth.models import User
-# Removed redundant import as IsOwnerOrReadOnly is defined in this file
 
+# Import local models and serializers
 from .models import Profile, Connection
 from .serializers import (
-    UserRegistrationSerializer, ProfileSerializer,
-    ConnectionSerializer, ConnectionRequestSerializer, ConnectionUpdateSerializer
+    UserRegistrationSerializer, ProfileSerializer, ConnectionSerializer,
+    ConnectionRequestSerializer, ConnectionUpdateSerializer
+    # BasicUserSerializer and BasicProfileSerializer are used within other serializers
 )
-# from .permissions import IsOwnerOrReadOnly # Custom permission needed
-
 
 # --- Custom Permissions ---
+
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
-    Custom permission to only allow owners of an object (profile) to edit it.
-    Assumes the model instance has a `user` attribute.
+    Custom permission: Allows read-only access to anyone, but only allows
+    write/update/delete operations if the request user is the owner
+    of the associated User object (for Profiles).
     """
     def has_object_permission(self, request, view, obj):
-        # Read permissions are allowed to any request,
-        # so we'll always allow GET, HEAD or OPTIONS requests.
+        # SAFE_METHODS are GET, HEAD, OPTIONS - allow these for anyone
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # Write permissions are only allowed to the owner of the profile.
-        # Handle Profile directly or User object associated with Profile
+        # Write permissions check: requires object owner == request user
         if isinstance(obj, Profile):
              return obj.user == request.user
-        elif isinstance(obj, User): # If operating on User object directly
-             return obj == request.user
+        # Add checks for other models if needed, e.g., if User model itself was directly editable
+        # elif isinstance(obj, User):
+        #      return obj == request.user
         return False
 
 
 # --- Authentication Views ---
+
 class UserRegistrationView(generics.CreateAPIView):
+    """Handles new user registration."""
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
-    permission_classes = [permissions.AllowAny] # Anyone can register
+    permission_classes = [permissions.AllowAny] # Allow any user (authenticated or not) to register
 
-# Use DRF's built-in view for login, it returns the token
 class UserLoginView(ObtainAuthToken):
-     def post(self, request, *args, **kwargs):
+    """Handles user login and returns an authentication token."""
+    # Inherits standard DRF token generation logic
+    # Overrides post to include basic user info alongside the token
+    def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data,
                                            context={'request': request})
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(raise_exception=True) # Raises validation errors automatically
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
-        # Include basic user info in login response along with token
         return Response({
             'token': token.key,
-            'user': {
+            'user': { # Return basic user info needed by frontend
                 'id': user.pk,
                 'username': user.username,
                 'email': user.email,
-                'name': user.get_full_name() or user.username # Send combined name
+                'name': user.get_full_name() or user.username
             }
         })
 
 class UserLogoutView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    """Handles user logout by deleting the authentication token."""
+    permission_classes = [permissions.IsAuthenticated] # Must be logged in to log out
 
     def post(self, request, *args, **kwargs):
-        # Simply delete the token on the server
+        """Deletes the user's auth token."""
         try:
             request.user.auth_token.delete()
             return Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
         except (AttributeError, Token.DoesNotExist):
+             # Handle cases where token might already be deleted or doesn't exist
              return Response({"error": "No active session found or token missing."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # --- Profile Views ---
+
 class UserProfileView(generics.RetrieveUpdateDestroyAPIView):
     """
-    View to retrieve, update, or delete the logged-in user's profile.
+    Handles retrieving, updating (PUT/PATCH), and deleting the
+    profile associated with the *currently authenticated* user.
     """
     queryset = Profile.objects.select_related('user').all()
     serializer_class = ProfileSerializer
+    # User must be authenticated and the owner of the profile to modify/delete
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
 
     def get_object(self):
-        # Returns the profile object for the currently authenticated user
+        """Returns the profile object for the request user, creating if needed."""
+        # Using get_or_create simplifies handling for users who haven't saved profile details yet
         profile, created = Profile.objects.get_or_create(user=self.request.user)
-        # Check object permissions explicitly after getting/creating
+        # Check permissions against the retrieved/created object
         self.check_object_permissions(self.request, profile)
         return profile
 
     def perform_destroy(self, instance):
-        # Optional: Instead of deleting profile, maybe just deactivate user?
-        # For now, delete profile. User deletion logic might be separate.
-        user = instance.user # Get user before deleting profile if needed elsewhere
+        """Deletes the user's profile (but not the User account itself)."""
+        # Consider if deleting the User account should also happen here or elsewhere
         instance.delete()
-        # Maybe delete user too? Depends on requirements.
-        # user.delete()
 
 
 class PublicProfileDetailView(generics.RetrieveAPIView):
     """
-    View to retrieve a specific user's profile publicly (read-only).
-    Uses user ID in the URL.
+    Handles retrieving any active user's profile details (read-only).
+    Lookup is based on the user ID provided in the URL.
     """
     queryset = Profile.objects.select_related('user').filter(user__is_active=True)
     serializer_class = ProfileSerializer
-    permission_classes = [permissions.AllowAny] # Anyone can view profiles
-    lookup_field = 'user_id' # Look up profile by user ID in URL
+    permission_classes = [permissions.AllowAny] # Allow anyone to view profiles
+    lookup_field = 'user_id' # Use 'user_id' from URL pattern (e.g., /profiles/<int:user_id>/)
 
+
+# --- User Discovery View ---
 
 class UserListView(generics.ListAPIView):
     """
-    View to list profiles for user discovery, with filtering and search.
-
-    - Excludes the profile of the currently logged-in user (if authenticated).
-    - Excludes users who haven't set a role or are inactive.
-    - Accessible by anyone (controlled by permission_classes).
-    - Supports filtering via query parameters:
-        - `role`: Exact match (e.g., 'mentor', 'mentee').
-        - `skills`: Comma-separated string; matches if profile contains ANY listed skill (case-insensitive).
-        - `interests`: Comma-separated string; matches if profile contains ANY listed interest (case-insensitive).
-        - `search`: Matches keywords in username, first/last name, bio, or headline (case-insensitive).
-    - Uses default pagination defined in settings.
-    - Orders results by username by default.
+    Handles listing user profiles for discovery on the dashboard.
+    Supports filtering (role, skills, interests) and searching.
+    Excludes the logged-in user from the results.
     """
     serializer_class = ProfileSerializer
-    permission_classes = [permissions.AllowAny] # Allows Browse without needing to log in
+    permission_classes = [permissions.AllowAny] # Allow browsing without login
 
-    # Enable DRF's built-in search filter
+    # Configure DRF's built-in SearchFilter
     filter_backends = [filters.SearchFilter]
-    # Define fields the 'search' query parameter (e.g., /api/users/?search=python) will target
-    search_fields = [
-        'user__username',
-        'user__first_name',
-        'user__last_name',
-        'bio',
-        'headline'
-    ]
+    search_fields = ['user__username', 'user__first_name', 'user__last_name', 'bio', 'headline']
+
+    # Default pagination is handled by settings.py
 
     def get_queryset(self):
-        """
-        Builds the queryset by filtering active users with roles,
-        excluding the current user, and applying query parameter filters.
-        """
-        # Start with base queryset: Profiles linked to active users, excluding those with no role.
-        # select_related('user') helps optimize by fetching user data in the same query.
+        """Builds the queryset, applying filters and excluding the current user."""
+        # Start with active users who have set a role
         queryset = Profile.objects.select_related('user').filter(
             user__is_active=True
         ).exclude(role__isnull=True).exclude(role__exact='')
 
-        # --- Exclude the currently logged-in user ---
+        # Exclude the requesting user if they are logged in
         if self.request.user.is_authenticated:
             queryset = queryset.exclude(user=self.request.user)
-        # --- End exclusion ---
 
-        # --- Apply manual filtering based on query parameters ---
-        # Role Filter
+        # Apply manual filters from query parameters
         role_filter = self.request.query_params.get('role', None)
+        skills_query = self.request.query_params.get('skills', None)
+        interests_query = self.request.query_params.get('interests', None)
+
         if role_filter:
-            # Ensure the provided role is valid if using choices, otherwise direct filter:
-            # if role_filter in dict(Profile.ROLE_CHOICES): # Example validation
             queryset = queryset.filter(role=role_filter)
 
-        # Skills Filter (matches if profile contains ANY of the comma-separated skills)
-        skills_query = self.request.query_params.get('skills', None)
+        # Filter by skills (comma-separated, case-insensitive contains OR logic)
         if skills_query:
-             # Split, strip whitespace, and filter out empty strings
              skills = [s.strip() for s in skills_query.split(',') if s.strip()]
              if skills:
-                # Create a Q object for each skill check (case-insensitive contains)
-                # Combine them with OR (|) logic
                 q_objects = Q()
-                for skill in skills:
-                    q_objects |= Q(skills__icontains=skill)
-                queryset = queryset.filter(q_objects) # Apply the combined OR filter
+                for skill in skills: q_objects |= Q(skills__icontains=skill)
+                queryset = queryset.filter(q_objects)
 
-        # Interests Filter (matches if profile contains ANY of the comma-separated interests)
-        interests_query = self.request.query_params.get('interests', None)
+        # Filter by interests (comma-separated, case-insensitive contains OR logic)
         if interests_query:
              interests = [i.strip() for i in interests_query.split(',') if i.strip()]
              if interests:
                 q_objects = Q()
-                for interest in interests:
-                    q_objects |= Q(interests__icontains=interest)
+                for interest in interests: q_objects |= Q(interests__icontains=interest)
                 queryset = queryset.filter(q_objects)
-        # --- End manual filtering ---
-
-        # Note: The 'search' filter (e.g., ?search=keyword) is applied automatically
-        # by the SearchFilter backend using the `search_fields` defined above.
 
         # Apply default ordering
         return queryset.order_by('user__username')
 
 
-
 # --- Connection Views ---
+
 class ConnectionListView(views.APIView):
     """
-    List incoming, outgoing, and current connections for the logged-in user.
+    Lists connections for the authenticated user, categorized into
+    incoming pending, outgoing pending, and current accepted connections.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        """Handles GET request to retrieve connection lists."""
         user = request.user
+        # Optimize queries using select_related for user and profile details
         incoming = Connection.objects.filter(receiver=user, status='pending').select_related('requester', 'requester__profile')
         outgoing = Connection.objects.filter(requester=user, status='pending').select_related('receiver', 'receiver__profile')
-        current_sent = Connection.objects.filter(requester=user, status='accepted').select_related('receiver', 'receiver__profile')
-        current_received = Connection.objects.filter(receiver=user, status='accepted').select_related('requester', 'requester__profile')
+        # Get current connections where user is either requester or receiver
+        current_connections_qs = Connection.objects.filter(
+            Q(requester=user, status='accepted') | Q(receiver=user, status='accepted')
+        ).select_related('requester', 'requester__profile', 'receiver', 'receiver__profile')
+        # Sort current connections, e.g., by acceptance date descending (newest first)
+        current_connections = sorted(current_connections_qs, key=lambda x: x.accepted_at or x.created_at, reverse=True)
 
-        # Combine current connections
-        current_connections = list(current_sent) + list(current_received)
-        # Sort current connections if needed, e.g., by acceptance date
-        current_connections.sort(key=lambda x: x.accepted_at or x.created_at, reverse=True)
-
-
-        # Serialize the data
+        # Serialize the data, passing request context for URL generation
         serializer_context = {'request': request}
-        incoming_serializer = ConnectionSerializer(incoming, many=True, context=serializer_context)
-        outgoing_serializer = ConnectionSerializer(outgoing, many=True, context=serializer_context)
-        current_serializer = ConnectionSerializer(current_connections, many=True, context=serializer_context)
-
-
         return Response({
-            'incoming': incoming_serializer.data,
-            'outgoing': outgoing_serializer.data,
-            'current': current_serializer.data
+            'incoming': ConnectionSerializer(incoming, many=True, context=serializer_context).data,
+            'outgoing': ConnectionSerializer(outgoing, many=True, context=serializer_context).data,
+            'current': ConnectionSerializer(current_connections, many=True, context=serializer_context).data
         })
 
 
 class ConnectionRequestView(generics.CreateAPIView):
-    """
-    Send a connection request to another user.
-    """
+    """Handles sending (POSTing) a new connection request."""
     serializer_class = ConnectionRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    # serializer.create handles the logic, using context={'request': request}
+    # The serializer's create method handles validation and object creation
 
 
 class ConnectionManageView(views.APIView):
     """
-    Manage a connection: Accept, Decline, Cancel, Remove.
-    Uses connection ID in the URL.
+    Handles managing an existing connection request or connection:
+    - PUT: Accept / Decline a pending request (requires 'action' in data).
+    - DELETE: Cancel an outgoing pending request OR Remove an accepted connection.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self, pk):
-        """Helper method to get connection and check basic permission."""
+        """Helper method to get the Connection object and check user involvement."""
         connection = get_object_or_404(Connection, pk=pk)
-        # Check if the current user is involved in this connection
+        # Ensure the logged-in user is either the requester or receiver
         if connection.requester != self.request.user and connection.receiver != self.request.user:
              raise permissions.PermissionDenied("You are not involved in this connection.")
         return connection
 
-    # Handle PUT for Accept/Decline
     def put(self, request, pk, *args, **kwargs):
-        connection = self.get_object(pk)
+        """Handles Accept/Decline actions."""
+        connection = self.get_object(pk) # Checks involvement
+        # Use ConnectionUpdateSerializer to validate action and update status
         serializer = ConnectionUpdateSerializer(instance=connection, data=request.data, context={'request': request})
         if serializer.is_valid():
             updated_instance = serializer.save()
-            if updated_instance is None: # Handle case where 'decline' deletes the instance
-                 return Response({"message": "Request declined."}, status=status.HTTP_204_NO_CONTENT)
-            # Return updated connection details or just success
+            if updated_instance is None: # Handle cases where serializer might delete (e.g., decline)
+                 return Response({"message": "Request declined/processed."}, status=status.HTTP_204_NO_CONTENT)
+            # Return updated connection details
             return Response(ConnectionSerializer(updated_instance, context={'request': request}).data, status=status.HTTP_200_OK)
+        # Return validation errors
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Handle DELETE for Cancel/Remove
     def delete(self, request, pk, *args, **kwargs):
-        connection = self.get_object(pk)
+        """Handles Cancel (outgoing pending) or Remove (accepted) actions."""
+        connection = self.get_object(pk) # Checks involvement
         user = request.user
 
-        # Logic for Cancel (Requester, Pending) or Remove (Either user, Accepted)
-        if connection.status == 'pending' and connection.requester == user:
-            # Cancel request
+        # Determine if action is allowed based on status and user role
+        can_cancel = (connection.status == 'pending' and connection.requester == user)
+        can_remove = (connection.status == 'accepted' and (connection.requester == user or connection.receiver == user))
+
+        if can_cancel:
             connection.delete()
             return Response({"message": "Request cancelled."}, status=status.HTTP_204_NO_CONTENT)
-        elif connection.status == 'accepted' and (connection.requester == user or connection.receiver == user):
-            # Remove connection
+        elif can_remove:
             connection.delete()
             return Response({"message": "Connection removed."}, status=status.HTTP_204_NO_CONTENT)
         else:
-             # User doesn't have permission or status doesn't allow deletion by this user
-             return Response({"error": "You cannot perform this delete action."}, status=status.HTTP_403_FORBIDDEN)
+             # If neither condition met, user cannot perform delete action
+             return Response({"error": "You cannot perform this delete action on this connection."}, status=status.HTTP_403_FORBIDDEN)
+
