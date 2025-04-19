@@ -741,13 +741,26 @@ select {
     margin-bottom: 0.75rem;
 }
 
+
 .user-card .user-skills {
     font-size: 0.85rem;
     color: var(--muted-color);
     margin-bottom: var(--spacing-unit);
-    height: 3.5em; /* Limit height and allow overflow */
+    height: 2.5em; 
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-bottom: 0;
+    
+}
+
+.user-card .user-interests {
+    font-size: 0.85rem; 
+    color: var(--muted-color); 
+    margin-bottom: var(--spacing-unit); 
+    height: 2.5em; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    margin-top: 0;
 }
 
 .pagination {
