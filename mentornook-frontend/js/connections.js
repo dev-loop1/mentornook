@@ -258,7 +258,7 @@ function createConnectionItem(item, type, loggedInUserId) {
             <strong>${otherUserName}</strong>
             ${
               otherUserRole
-                ? `(<span class="user-role ${otherUserRole}">${otherUserRole}</span>)`
+                ? `<span class="user-role ${otherUserRole}">${otherUserRole}</span>`
                 : ""
             }
             <span class="${
