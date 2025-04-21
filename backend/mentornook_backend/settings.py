@@ -13,17 +13,26 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 # mentornook_backend/settings.py
 import os
 from pathlib import Path
+import dj_database_url
+# For using .env locally:
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=YOUR_SECRET_KEY_HERE' # Replace with your key
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True # Set to False for production
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = [] # Add your frontend domain and backend domain in production
+ALLOWED_HOSTS = []
+ALLOWED_HOSTS_ENV = os.getenv('ALLOWED_HOSTS')
+if ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS.extend(ALLOWED_HOSTS_ENV.split(','))
+ # Add your frontend domain and backend domain in production
 
 
 # Application definition
@@ -46,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # For serving static files in production
     'corsheaders.middleware.CorsMiddleware', # CORS Middleware - place high up
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -81,13 +91,33 @@ WSGI_APPLICATION = 'mentornook_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mentornook_db', # Replace with your DB name
-        'USER': 'vikas', # Replace with your DB user
-        'PASSWORD': 'vikku', # Replace with your DB password
-        'HOST': 'localhost', # Or your DB host (e.g., '127.0.0.1')
-        'PORT': '5432', # Default PostgreSQL port
+        'NAME': 'local_db_name_placeholder', # Placeholder
+        'USER': 'local_user_placeholder',     # Placeholder
+        'PASSWORD': '',                       # Placeholder (empty)
+        'HOST': 'localhost',                  # Placeholder
+        'PORT': '5432',                       # Placeholder
     }
 }
+
+# --- Database configuration using DATABASE_URL environment variable ---
+DATABASE_URL = os.getenv('DATABASE_URL') # Read the env variable
+
+if DATABASE_URL:
+#     # If the DATABASE_URL is set, parse it using dj-database-url
+#     # and overwrite the default database configuration.
+#     # print("INFO: Using DATABASE_URL environment variable for database configuration.") # Optional log
+    DATABASES['default'] = dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=600, # Optional: Number of seconds database connections should persist
+#         # ssl_require is often needed for cloud databases. Set via env var if needed.
+        ssl_require=os.getenv('DB_SSL_REQUIRED', 'False') == 'True'
+    )
+# else:
+    # Optional: Add a warning if DATABASE_URL is not set when DEBUG is False
+    if not DEBUG:
+         print("WARNING: DATABASE_URL environment variable not set. Using default DATABASES setting.")
+    # If DATABASE_URL is not set, Django will use the default DATABASES dictionary
+    # defined earlier in the file (useful for local setup without .env initially).
 
 
 # Password validation
@@ -110,8 +140,9 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 STATIC_URL = 'static/'
-# STATIC_ROOT = BASE_DIR / 'staticfiles' # For production collectstatic
+STATIC_ROOT = BASE_DIR / 'staticfiles' # For production collectstatic
 
 # Media files (User Uploads like profile pictures)
 MEDIA_URL = '/media/'
@@ -141,14 +172,28 @@ REST_FRAMEWORK = {
 }
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS = [
-    # Add the origin of your frontend (e.g., where index.html is served)
-    "http://localhost:5500", # Example for VS Code Live Server default
-    "http://127.0.0.1:5500",
-    # Add your production frontend URL here
-]
+CORS_ALLOWED_ORIGINS = []
+# Load allowed origins from environment variable if set (comma-separated string expected)
+# Example ENV VAR: CORS_ALLOWED_ORIGINS=https://your-frontend.netlify.app,https://another-domain.com
+CORS_ALLOWED_ORIGINS_ENV = os.getenv('CORS_ALLOWED_ORIGINS')
+if CORS_ALLOWED_ORIGINS_ENV:
+    CORS_ALLOWED_ORIGINS.extend([origin.strip() for origin in CORS_ALLOWED_ORIGINS_ENV.split(',')])
+
+# if DEBUG:
+#     # Allow typical local development frontend origins when DEBUG is True
+#     CORS_ALLOWED_ORIGINS.extend([
+#         "http://localhost:5500", # VS Code Live Server
+#         "http://127.0.0.1:5500",
+#     ])
+
+CORS_ALLOWED_ORIGINS = list(set(CORS_ALLOWED_ORIGINS))
+
+# WARNING: Avoid CORS_ALLOW_ALL_ORIGINS = True in production
 # Or for development ease (less secure):
 # CORS_ALLOW_ALL_ORIGINS = True
+CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'False') == 'True'
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False') == 'True'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Optional: Allow credentials (if using session auth or cookies)
 # CORS_ALLOW_CREDENTIALS = True
@@ -158,3 +203,8 @@ CORS_ALLOWED_ORIGINS = [
 # CSRF_COOKIE_SAMESITE = 'Lax' # Or 'None' if needed with Secure=True
 # SESSION_COOKIE_SAMESITE = 'Lax' # Or 'None' if needed with Secure=True
 # CSRF_COOKIE_HTTPONLY = False # Allow JS to read CSRF cookie
+
+# Optional: Redirect HTTP to HTTPS (often handled by hosting platform/proxy)
+# WARNING: Only enable if your platform doesn't do this automatically AND
+# SECURE_PROXY_SSL_HEADER is correctly detecting HTTPS.
+# SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False') == 'True'
