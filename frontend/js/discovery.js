@@ -218,7 +218,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Extract data safely, providing defaults
     const profilePic =
-      userProfile.profile_picture_url ||
       "assets/images/profile_avatar_default.png";
     const name =
       userProfile.name || userProfile.user?.username || "Unnamed User";
