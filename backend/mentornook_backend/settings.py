@@ -48,8 +48,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken', # For DRF Token Authentication
     'corsheaders',
 
-    # Your apps
-    'api', # Or just 'api'
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -148,18 +147,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
-        # 'rest_framework.authentication.SessionAuthentication', # Optional
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly', # Default: ReadOnly for anon, Write for auth
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly', 
     ],
-    'DEFAULT_FILTER_BACKENDS': [ # Optional: Add default filter backends
+    'DEFAULT_FILTER_BACKENDS': [ 
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
      ],
      'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-     'PAGE_SIZE': 10 # Match frontend expectation or adjust frontend
+     'PAGE_SIZE': 10 
 }
 
 # CORS Settings

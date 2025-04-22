@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db.models import Q
 from rest_framework import serializers
-from .models import Profile, Connection # Ensure Connection model is imported
+from .models import Profile, Connection 
 
 # --- User Serializers ---
 
