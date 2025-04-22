@@ -15,10 +15,9 @@ class Profile(models.Model):
     headline = models.CharField(max_length=255, blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     # Store skills/interests as comma-separated strings initially to match frontend
-    # A ManyToManyField or a separate Skill model is better long-term
     skills = models.TextField(blank=True, help_text="Comma-separated skills")
     interests = models.TextField(blank=True, help_text="Comma-separated interests")
-    profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True, default='profile_pics/profile_avatar_default.png')
+    profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True) #default='profile_pics/profile_avatar_default.png'
     location = models.CharField(max_length=100, blank=True, null=True)
     linkedin_url = models.URLField(max_length=200, blank=True, null=True)
     website_url = models.URLField(max_length=200, blank=True, null=True)
