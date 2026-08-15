@@ -4,7 +4,7 @@
 
 MentorNook is a full-stack web application designed as a mentorship matching platform. It allows users to register as either mentors or mentees, create detailed profiles highlighting their skills and interests, browse other users, and establish mentorship connections.
 
-This project features a vanilla JavaScript, HTML, and CSS frontend that communicates with a robust backend API built using Django and Django REST Framework, powered by a PostgreSQL database.
+This project features a vanilla JavaScript, HTML, and CSS frontend that communicates with a robust backend API built using TypeScript, Fastify, and Prisma, powered by a PostgreSQL database.
 
 ## Live Demo
 
@@ -13,7 +13,7 @@ This project features a vanilla JavaScript, HTML, and CSS frontend that communic
 
 ## Features
 
-* **User Authentication:** Secure user registration, login, and logout functionality.
+* **User Authentication:** Secure user registration, login, and logout functionality using JWT.
 * **Profile Management:** Users can create, view, edit, and delete their profiles.
     * Specify role (Mentor or Mentee).
     * Add headline, bio, skills, interests, location, and external links.
@@ -37,24 +37,20 @@ This project features a vanilla JavaScript, HTML, and CSS frontend that communic
 
 **Backend:**
 
-* Python 3
-* Django & Django REST Framework (DRF)
+* Node.js & TypeScript
+* Fastify
+* Prisma ORM
 * PostgreSQL
-* Gunicorn (WSGI Server)
-* `django-cors-headers`
-* `django-filter`
-* `psycopg2` (or `-binary`)
-* `whitenoise` (for static files)
-* `dj-database-url` (for DB config)
-* `python-dotenv` (for local env vars)
+* Redis (for caching & rate limiting)
+* JWT for Authentication
 
 ## Local Setup and Running
 
 **Prerequisites:**
 
-* Python 3.x
-* pip
-* PostgreSQL Server
+* Node.js (v18+)
+* npm or yarn
+* Docker & Docker Compose (for the PostgreSQL database)
 * Git
 
 **Steps:**
@@ -62,59 +58,53 @@ This project features a vanilla JavaScript, HTML, and CSS frontend that communic
 1.  **Clone Repository:**
     ```bash
     git clone https://github.com/dev-loop1/mentornook.git
-    cd mentornook-project
+    cd mentornook
     ```
 
 2.  **Setup Backend:**
-    * Create and activate a virtual environment:
+    * Navigate to the backend directory:
         ```bash
-        python -m venv venv
-        source venv/bin/activate # (or .\venv\Scripts\activate on Windows)
+        cd backend-ts
         ```
     * Install backend dependencies:
         ```bash
-        cd backend
-        pip install -r requirements.txt
+        npm install
         ```
-    * Setup PostgreSQL database and user (see PostgreSQL docs).
-    * Create a `.env` file in the `backend/` directory based on `.env.example` (if provided) or manually add variables:
+    * Start the PostgreSQL database using Docker Compose:
+        ```bash
+        docker compose up -d db
+        ```
+    * Create a `.env` file in the `backend-ts/` directory (you can copy from a `.env.example` if available) and add your environment variables:
         ```dotenv
-        # backend/.env
-        SECRET_KEY='your_local_secret_key'
-        DEBUG=True
-        DATABASE_URL='postgres://USER:PASSWORD@HOST:PORT/DB_NAME' # Your local DB URL
-        ALLOWED_HOSTS=localhost,127.0.0.1
-        CORS_ALLOWED_ORIGINS=http://localhost:5500,[http://127.0.0.1:5500](http://127.0.0.1:5500)
+        # backend-ts/.env
+        DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mentornook_db?schema=public"
+        JWT_SECRET="your_local_secret_key"
         ```
-    * Run database migrations:
+    * Push the Prisma schema to the database:
         ```bash
-        python manage.py makemigrations api
-        python manage.py migrate
-        ```
-    * Create a superuser (optional, for `/admin/`):
-        ```bash
-        python manage.py createsuperuser
+        npx prisma db push
         ```
 
 3.  **Run Backend Server:**
     ```bash
-    # Still inside backend/ directory
-    python manage.py runserver
+    # Still inside backend-ts/ directory
+    npm run dev
     ```
-    *(Backend API typically runs at `http://127.0.0.1:8000/api/`)*
+    *(The backend API will run at `http://127.0.0.1:3000/api`)*
 
 4.  **Run Frontend Server:**
     * Navigate to the `frontend/` directory in a **separate terminal**.
-    * Use a simple HTTP server or VS Code's "Live Server" extension:
-        * Right-click `frontend/index.html` -> "Open with Live Server".
-    * *(Frontend typically runs at `http://127.0.0.1:5500/frontend/`)*
-    * Ensure `API_BASE_URL` in `frontend/js/utils.js` points to `http://127.0.0.1:8000/api` for local development.
+    * Start a simple HTTP server. For example, using `npx`:
+        ```bash
+        npx http-server -p 8080
+        ```
+    * *(The frontend will run at `http://127.0.0.1:8080/`)*
+    * **Note:** Ensure `API_BASE_URL` in `frontend/js/utils.js` and `frontend/js/utils.min.js` points to `http://localhost:3000/api` for local development.
 
-5.  **Access:** Open the frontend URL (e.g., `http://127.0.0.1:5500/frontend/`) in your browser.
+5.  **Access:** Open the frontend URL (e.g., `http://127.0.0.1:8080/`) in your browser to view the application.
 
 ## Deployment
 
-* The backend is deployed on **Render** using Gunicorn and PostgreSQL. Static files (admin) are served via Whitenoise. Media files (user uploads) require a separate production solution (e.g., AWS S3, not included in this basic setup).
+* The backend is designed to be deployed on platforms like **Render** or **Heroku** using Node.js and PostgreSQL.
 * The frontend is deployed as a static site on **Netlify**.
-* Production environment variables (`SECRET_KEY`, `DATABASE_URL`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `DEBUG=False`, etc.) are configured directly on the respective hosting platforms.
-
+* Production environment variables (`JWT_SECRET`, `DATABASE_URL`, etc.) should be configured directly on the respective hosting platforms.
