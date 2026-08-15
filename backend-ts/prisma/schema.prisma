@@ -1,0 +1,51 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  profile              Profile?
+  sentConnections      Connection[] @relation("SentConnections")
+  receivedConnections  Connection[] @relation("ReceivedConnections")
+}
+
+model Profile {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String?  // mentor, mentee
+  headline       String?  @db.VarChar(255)
+  bio            String?  @db.Text
+  skills         String?  @db.Text
+  interests      String?  @db.Text
+  profilePicture String?
+  location       String?  @db.VarChar(100)
+  linkedinUrl    String?
+  websiteUrl     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Connection {
+  id          Int      @id @default(autoincrement())
+  requesterId Int
+  receiverId  Int
+  status      String   @default("pending") // pending, accepted, declined
+  createdAt   DateTime @default(now())
+  acceptedAt  DateTime?
+
+  requester   User @relation("SentConnections", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver    User @relation("ReceivedConnections", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, receiverId])
+}
