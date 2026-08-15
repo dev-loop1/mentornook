@@ -4,7 +4,7 @@ import { prisma } from '../db.js';
 
 export default async function authRoutes(server: FastifyInstance) {
   server.post('/register', async (request, reply) => {
-    const { username, email, password, role } = request.body as any;
+    const { username, email, password, first_name, last_name, role } = request.body as any;
 
     if (!username || !email || !password) {
       return reply.code(400).send({ error: 'Username, email, and password are required' });
@@ -84,5 +84,9 @@ export default async function authRoutes(server: FastifyInstance) {
       server.log.error(error);
       return reply.code(500).send({ error: 'Internal Server Error' });
     }
+  });
+
+  server.post('/logout', async (request, reply) => {
+    return { success: true, message: 'Logged out successfully' };
   });
 }

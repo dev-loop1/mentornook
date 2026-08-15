@@ -2,52 +2,42 @@ import { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
 
 export default async function profileRoutes(server: FastifyInstance) {
-  // Middleware to verify JWT token
-  server.addHook('onRequest', async (request, reply) => {
+  const verifyToken = async (request: any, reply: any) => {
     try {
       await request.jwtVerify();
     } catch (err) {
       reply.send(err);
     }
-  });
+  };
 
-  server.get('/', async (request, reply) => {
+  server.get('/profile', { preValidation: [verifyToken] }, async (request, reply) => {
     const user = request.user as any;
-    const cacheKey = `profile:${user.id}`;
     
     try {
-      // Check cache first
-      const cachedProfile = await server.redis.get(cacheKey);
-      if (cachedProfile) {
-        return { profile: JSON.parse(cachedProfile), cached: true };
-      }
 
       const profile = await prisma.profile.findUnique({
         where: { userId: user.id },
-        include: {
-          user: {
-            select: { username: true, email: true }
-          }
-        }
+        include: { user: { select: { username: true, email: true } } }
       });
 
       if (!profile) {
         return reply.code(404).send({ error: 'Profile not found' });
       }
 
-      // Set cache for 1 hour
-      await server.redis.set(cacheKey, JSON.stringify(profile), 'EX', 3600);
+      const skills_list = profile.skills ? profile.skills.split(',') : [];
+      const interests_list = profile.interests ? profile.interests.split(',') : [];
+      const profileData = { ...profile, name: profile.user.username, skills_list, interests_list };
 
-      return { profile, cached: false };
+      return profileData; 
     } catch (error) {
       server.log.error(error);
       return reply.code(500).send({ error: 'Internal Server Error' });
     }
   });
 
-  server.put('/', async (request, reply) => {
+  server.put('/profile', { preValidation: [verifyToken] }, async (request, reply) => {
     const user = request.user as any;
-    const { headline, bio, skills, interests, location, linkedinUrl, websiteUrl } = request.body as any;
+    const { headline, bio, skills, interests, location, linkedin_url, website_url, role } = request.body as any;
 
     try {
       const profile = await prisma.profile.update({
@@ -58,30 +48,66 @@ export default async function profileRoutes(server: FastifyInstance) {
           skills,
           interests,
           location,
-          linkedinUrl,
-          websiteUrl,
+          linkedinUrl: linkedin_url,
+          websiteUrl: website_url,
+          role: role || undefined,
         }
       });
 
-      // Invalidate cache
-      const cacheKey = `profile:${user.id}`;
-      await server.redis.del(cacheKey);
-
-      return { message: 'Profile updated successfully', profile };
+      return profile;
     } catch (error) {
       server.log.error(error);
       return reply.code(500).send({ error: 'Internal Server Error' });
     }
   });
 
-  // Example of RBAC: only mentors can access this route (just an example for now)
-  server.get('/mentor-only-data', async (request, reply) => {
+  server.delete('/profile', { preValidation: [verifyToken] }, async (request, reply) => {
     const user = request.user as any;
-
-    if (user.role !== 'mentor') {
-      return reply.code(403).send({ error: 'Forbidden: Requires mentor role' });
+    try {
+      await prisma.user.delete({ where: { id: user.id } });
+      return reply.code(204).send();
+    } catch (error) {
+      server.log.error(error);
+      return reply.code(500).send({ error: 'Internal Server Error' });
     }
+  });
 
-    return { data: 'This is restricted data only for mentors' };
+  server.get('/profiles/:id', async (request, reply) => {
+    const { id } = request.params as any;
+    try {
+      const profile = await prisma.profile.findUnique({
+        where: { userId: Number(id) },
+        include: { user: { select: { id: true, username: true } } }
+      });
+      if (!profile) return reply.code(404).send({ error: 'Profile not found' });
+      
+      const skills_list = profile.skills ? profile.skills.split(',') : [];
+      const interests_list = profile.interests ? profile.interests.split(',') : [];
+
+      return { ...profile, name: profile.user.username, skills_list, interests_list };
+    } catch (error) {
+      server.log.error(error);
+      return reply.code(500).send({ error: 'Internal Server Error' });
+    }
+  });
+
+  server.get('/users', async (request, reply) => {
+    try {
+      const profiles = await prisma.profile.findMany({
+        include: { user: { select: { id: true, username: true } } }
+      });
+      
+      const results = profiles.map(p => ({
+        ...p,
+        name: p.user.username,
+        skills_list: p.skills ? p.skills.split(',') : [],
+        interests_list: p.interests ? p.interests.split(',') : [],
+      }));
+
+      return { count: results.length, results };
+    } catch (error) {
+      server.log.error(error);
+      return reply.code(500).send({ error: 'Internal Server Error' });
+    }
   });
 }

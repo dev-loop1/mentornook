@@ -2,45 +2,44 @@ import { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
 
 export default async function connectionRoutes(server: FastifyInstance) {
-  // Middleware to verify JWT token
-  server.addHook('onRequest', async (request, reply) => {
+  const verifyToken = async (request: any, reply: any) => {
     try {
       await request.jwtVerify();
     } catch (err) {
       reply.send(err);
     }
-  });
+  };
 
-  server.post('/', async (request, reply) => {
+  server.post('/connections/request', { preValidation: [verifyToken] }, async (request, reply) => {
     const user = request.user as any;
-    const { receiverId } = request.body as any;
+    const { user_id } = request.body as any;
 
-    if (!receiverId) {
-      return reply.code(400).send({ error: 'receiverId is required' });
+    if (!user_id) {
+      return reply.code(400).send({ error: 'user_id is required' });
     }
 
-    if (user.id === receiverId) {
+    if (user.id === Number(user_id)) {
       return reply.code(400).send({ error: 'You cannot connect with yourself' });
     }
 
     try {
-      const existingConnection = await prisma.connection.findUnique({
+      const existingConnection = await prisma.connection.findFirst({
         where: {
-          requesterId_receiverId: {
-            requesterId: user.id,
-            receiverId: receiverId
-          }
+          OR: [
+            { requesterId: user.id, receiverId: Number(user_id) },
+            { requesterId: Number(user_id), receiverId: user.id }
+          ]
         }
       });
 
       if (existingConnection) {
-        return reply.code(409).send({ error: 'Connection request already exists' });
+        return reply.code(409).send({ error: 'Connection request already exists or you are already connected' });
       }
 
       const connection = await prisma.connection.create({
         data: {
           requesterId: user.id,
-          receiverId: receiverId,
+          receiverId: Number(user_id),
         }
       });
 
@@ -51,25 +50,24 @@ export default async function connectionRoutes(server: FastifyInstance) {
     }
   });
 
-  server.put('/:connectionId/status', async (request, reply) => {
+  server.put('/connections/:id', { preValidation: [verifyToken] }, async (request, reply) => {
     const user = request.user as any;
-    const { connectionId } = request.params as any;
-    const { status } = request.body as any;
+    const { id } = request.params as any;
+    const { action } = request.body as any;
 
-    if (!status || !['accepted', 'declined'].includes(status)) {
-      return reply.code(400).send({ error: 'Valid status (accepted/declined) is required' });
+    if (!action || !['accept', 'decline'].includes(action)) {
+      return reply.code(400).send({ error: 'Valid action (accept/decline) is required' });
     }
 
     try {
       const connection = await prisma.connection.findUnique({
-        where: { id: Number(connectionId) }
+        where: { id: Number(id) }
       });
 
       if (!connection) {
         return reply.code(404).send({ error: 'Connection not found' });
       }
 
-      // Only the receiver can accept or decline
       if (connection.receiverId !== user.id) {
         return reply.code(403).send({ error: 'Forbidden' });
       }
@@ -77,19 +75,45 @@ export default async function connectionRoutes(server: FastifyInstance) {
       const updatedConnection = await prisma.connection.update({
         where: { id: connection.id },
         data: {
-          status,
-          acceptedAt: status === 'accepted' ? new Date() : null,
+          status: action === 'accept' ? 'accepted' : 'declined',
+          acceptedAt: action === 'accept' ? new Date() : null,
         }
       });
 
-      return { message: `Connection ${status}`, connection: updatedConnection };
+      return updatedConnection;
     } catch (error) {
       server.log.error(error);
       return reply.code(500).send({ error: 'Internal Server Error' });
     }
   });
 
-  server.get('/', async (request, reply) => {
+  server.delete('/connections/:id', { preValidation: [verifyToken] }, async (request, reply) => {
+    const user = request.user as any;
+    const { id } = request.params as any;
+
+    try {
+      const connection = await prisma.connection.findUnique({
+        where: { id: Number(id) }
+      });
+
+      if (!connection) {
+        return reply.code(404).send({ error: 'Connection not found' });
+      }
+
+      if (connection.requesterId !== user.id && connection.receiverId !== user.id) {
+        return reply.code(403).send({ error: 'Forbidden' });
+      }
+
+      await prisma.connection.delete({ where: { id: connection.id } });
+
+      return reply.code(204).send();
+    } catch (error) {
+      server.log.error(error);
+      return reply.code(500).send({ error: 'Internal Server Error' });
+    }
+  });
+
+  server.get('/connections', { preValidation: [verifyToken] }, async (request, reply) => {
     const user = request.user as any;
 
     try {
@@ -101,12 +125,34 @@ export default async function connectionRoutes(server: FastifyInstance) {
           ]
         },
         include: {
-          requester: { select: { id: true, username: true } },
-          receiver: { select: { id: true, username: true } }
+          requester: { select: { id: true, username: true, email: true } },
+          receiver: { select: { id: true, username: true, email: true } }
         }
       });
 
-      return { connections };
+      const incoming = [];
+      const outgoing = [];
+      const current = [];
+
+      for (const conn of connections) {
+        const formattedConn = {
+          ...conn,
+          created_at: conn.createdAt,
+          accepted_at: conn.acceptedAt
+        };
+
+        if (conn.status === 'accepted') {
+          current.push(formattedConn);
+        } else if (conn.status === 'pending') {
+          if (conn.receiverId === user.id) {
+            incoming.push(formattedConn);
+          } else {
+            outgoing.push(formattedConn);
+          }
+        }
+      }
+
+      return { incoming, outgoing, current };
     } catch (error) {
       server.log.error(error);
       return reply.code(500).send({ error: 'Internal Server Error' });

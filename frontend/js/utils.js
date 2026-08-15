@@ -12,7 +12,7 @@
 
 // --- Constants ---
 // TODO: Update this URL for staging/production environments, potentially using environment variables.
-const API_BASE_URL = 'http://127.0.0.1:8000/api'; // Base URL for backend API
+const API_BASE_URL = 'http://localhost:3000/api'; // Base URL for backend API
 
 // --- DOM Helpers ---
 
@@ -260,7 +260,7 @@ async function WorkspaceApi(endpoint, method = 'GET', data = null, requiresAuth 
       console.error('WorkspaceApi Error: Auth token missing for protected route:', endpoint);
       return { success: false, error: 'Authentication required. Please log in.', status: 401 };
     }
-    headers['Authorization'] = `Token ${token}`; // Assumes DRF TokenAuthentication format
+    headers["Authorization"] = `Bearer ${token}`; // Assumes DRF TokenAuthentication format
   }
 
   // Add CSRF token header for methods that modify state

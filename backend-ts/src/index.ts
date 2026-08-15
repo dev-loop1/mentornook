@@ -1,14 +1,15 @@
+import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
-import fastifyRedis from '@fastify/redis';
 import { prisma } from './db.js';
 import authRoutes from './routes/auth.js';
 import profileRoutes from './routes/profile.js';
 import connectionRoutes from './routes/connection.js';
 
 const server = Fastify({
+  ignoreTrailingSlash: true,
   logger: {
     transport: {
       target: 'pino-pretty',
@@ -20,33 +21,25 @@ const server = Fastify({
   },
 });
 
-// Register Plugins
 server.register(cors, {
-  origin: '*', // For development, allow all. Update for production.
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRFToken', 'Accept'],
 });
 
 server.register(jwt, {
   secret: process.env.JWT_SECRET || 'supersecret_development_key',
 });
 
-// Redis setup for caching
-server.register(fastifyRedis, {
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: Number(process.env.REDIS_PORT) || 6379,
-});
-
-// Rate limiting
 server.register(rateLimit, {
-  max: 100, // 100 requests
+  max: 100,
   timeWindow: '1 minute'
 });
 
-// Register API Routes
-server.register(authRoutes, { prefix: '/api/auth' });
-server.register(profileRoutes, { prefix: '/api/profiles' });
-server.register(connectionRoutes, { prefix: '/api/connections' });
+server.register(authRoutes, { prefix: '/api' });
+server.register(profileRoutes, { prefix: '/api' });
+server.register(connectionRoutes, { prefix: '/api' });
 
-// Health check endpoint
 server.get('/health', async (request, reply) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
