@@ -28,6 +28,11 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
     steps:
     - uses: actions/checkout@v3
 
@@ -49,8 +54,18 @@ jobs:
       env:
         DATABASE_URL: postgresql://mentornook:mentornook_password@localhost:5432/mentornook_test_db?schema=public
 
+    - name: Run Linter
+      run: npm run lint
+
     - name: Type Check
       run: npx tsc --noEmit
+
+    - name: Run Tests
+      run: npm test
+      env:
+        DATABASE_URL: postgresql://mentornook:mentornook_password@localhost:5432/mentornook_test_db?schema=public
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
 
     - name: Build Docker Image
       run: docker build -t mentornook-api:test .

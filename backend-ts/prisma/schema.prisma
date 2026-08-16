@@ -6,24 +6,40 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum Role {
+  MENTOR
+  MENTEE
+  ADMIN
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique
   email     String   @unique
   password  String
+  role      Role     @default(MENTEE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
   profile              Profile?
-  sentConnections      Connection[] @relation("SentConnections")
-  receivedConnections  Connection[] @relation("ReceivedConnections")
+  sentConnections      Connection[]   @relation("SentConnections")
+  receivedConnections  Connection[]   @relation("ReceivedConnections")
+  sentApplications     Application[]  @relation("SentApplications")
+  receivedApplications Application[]  @relation("ReceivedApplications")
+  mentorSessions       Session[]      @relation("MentorSessions")
+  menteeSessions       Session[]      @relation("MenteeSessions")
+  writtenReviews       Review[]       @relation("WrittenReviews")
+  receivedReviews      Review[]       @relation("ReceivedReviews")
+  adminActions         AdminAction[]  @relation("AdminActions")
+
+  @@index([role])
+  @@index([email])
 }
 
 model Profile {
   id             Int      @id @default(autoincrement())
   userId         Int      @unique
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role           String?  // mentor, mentee
   headline       String?  @db.VarChar(255)
   bio            String?  @db.Text
   skills         String?  @db.Text
@@ -48,4 +64,73 @@ model Connection {
   receiver    User @relation("ReceivedConnections", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@unique([requesterId, receiverId])
+  @@index([status])
+  @@index([requesterId])
+  @@index([receiverId])
+}
+
+model Application {
+  id          Int      @id @default(autoincrement())
+  requesterId Int
+  receiverId  Int
+  message     String   @db.Text
+  status      String   @default("pending") // pending, approved, rejected
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requester   User @relation("SentApplications", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver    User @relation("ReceivedApplications", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([requesterId])
+  @@index([receiverId])
+}
+
+model Session {
+  id          Int      @id @default(autoincrement())
+  mentorId    Int
+  menteeId    Int
+  startTime   DateTime
+  endTime     DateTime
+  status      String   @default("scheduled") // scheduled, completed, canceled
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mentor      User @relation("MentorSessions", fields: [mentorId], references: [id], onDelete: Cascade)
+  mentee      User @relation("MenteeSessions", fields: [menteeId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([mentorId])
+  @@index([menteeId])
+  @@index([startTime])
+}
+
+model Review {
+  id          Int      @id @default(autoincrement())
+  reviewerId  Int
+  revieweeId  Int
+  rating      Int      // 1 to 5
+  comment     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  reviewer    User @relation("WrittenReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee    User @relation("ReceivedReviews", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@index([revieweeId])
+  @@index([rating])
+}
+
+model AdminAction {
+  id          Int      @id @default(autoincrement())
+  adminId     Int
+  action      String   @db.VarChar(255)
+  targetId    Int?
+  targetType  String?  @db.VarChar(50) // e.g., 'User', 'Review'
+  details     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  admin       User @relation("AdminActions", fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
 }

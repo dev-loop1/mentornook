@@ -28,21 +28,20 @@ export default async function authRoutes(server: FastifyInstance) {
           username,
           email,
           password: hashedPassword,
+          role: role || 'MENTEE',
           profile: {
-            create: {
-              role: role || null,
-            }
+            create: {}
           }
         },
         include: { profile: true }
       });
 
-      const token = server.jwt.sign({ id: user.id, username: user.username, role: user.profile?.role });
+      const token = server.jwt.sign({ id: user.id, username: user.username, role: user.role });
       
       return { 
         message: 'User registered successfully', 
         token, 
-        user: { id: user.id, username: user.username, email: user.email, role: user.profile?.role } 
+        user: { id: user.id, username: user.username, email: user.email, role: user.role } 
       };
     } catch (error) {
       server.log.error(error);
@@ -73,12 +72,12 @@ export default async function authRoutes(server: FastifyInstance) {
         return reply.code(401).send({ error: 'Invalid credentials' });
       }
 
-      const token = server.jwt.sign({ id: user.id, username: user.username, role: user.profile?.role });
+      const token = server.jwt.sign({ id: user.id, username: user.username, role: user.role });
 
       return { 
         message: 'Login successful', 
         token, 
-        user: { id: user.id, username: user.username, role: user.profile?.role } 
+        user: { id: user.id, username: user.username, role: user.role } 
       };
     } catch (error) {
       server.log.error(error);
