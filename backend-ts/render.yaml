@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: mentornook-api
+    env: docker
+    plan: starter
+    region: ohio
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mentornook-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: mentornook-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+
+  - type: redis
+    name: mentornook-redis
+    plan: free
+    region: ohio
+    ipAllowList: []
+
+databases:
+  - name: mentornook-db
+    plan: starter
+    region: ohio
+    postgresMajorVersion: 15

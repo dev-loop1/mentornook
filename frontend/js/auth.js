@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
       loginButton.textContent = "Logging in...";
 
       // Get form values
-      const email = document.getElementById("login-email").value;
+      const email = document.getElementById("login-email").value.trim();
       const password = document.getElementById("login-password").value;
 
       // --- Simple Frontend Validation ---
@@ -91,8 +91,8 @@ document.addEventListener("DOMContentLoaded", () => {
       signupButton.textContent = "Signing up...";
 
       // Get form values
-      const fullname = document.getElementById("signup-fullname").value;
-      const email = document.getElementById("signup-email").value;
+      const fullname = document.getElementById("signup-fullname").value.trim();
+      const email = document.getElementById("signup-email").value.trim();
       const password = document.getElementById("signup-password").value;
       const confirmPassword = document.getElementById(
         "signup-confirm-password"
